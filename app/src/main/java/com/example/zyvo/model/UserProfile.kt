@@ -30,5 +30,10 @@ data class UserProfile(
     val isFollowedByCurrentUser: Boolean = false,
     val isBlocked: Boolean = false,
     val isLiveNow: Boolean = false,
-    val currentRoomId: String? = null
+    val currentRoomId: String? = null,
+    val executiveRole: String? = null,
+    val whatsappNumber: String? = null,
+    val whatsappDirectUrl: String? = null,
+    val followingUserIds: List<String> = emptyList(),
+    val isTopHost: Boolean = false
 )

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -27,6 +28,8 @@ import com.example.zyvo.model.LeaderboardCategory
 import com.example.zyvo.model.LeaderboardItem
 import com.example.zyvo.model.LeaderboardTimeframe
 import com.example.zyvo.model.VipTier
+import com.example.zyvo.ui.components.ExecutiveAvatar
+import com.example.zyvo.ui.components.openWhatsAppChat
 import com.example.zyvo.ui.theme.*
 
 @Composable
@@ -40,12 +43,58 @@ fun RankingsScreen(
 
     val mockLeaderboardItems = remember(selectedCategory, selectedTimeframe) {
         listOf(
-            LeaderboardItem(1, "pixel_queen", "pixel_queen", "Elena 'PixelQueen'", "🎮", 690000, "Diamonds", VipTier.SVIP_2, 35, true, true),
-            LeaderboardItem(2, "apex_arenas", "apex_arenas", "Apex Arenas", "⚔️", 520000, "Diamonds", VipTier.SVIP_1, 31, true, false),
-            LeaderboardItem(3, "dj_kai", "kai_sterling", "Kai Sterling", "🎧", 284000, "Diamonds", VipTier.VIP_5, 28, true, true),
-            LeaderboardItem(4, "marcus_voice", "marcus_vance", "Marcus Vance", "☕", 145000, "Diamonds", VipTier.VIP_2, 22, true, true),
-            LeaderboardItem(5, "luna_star", "luna_star", "Luna Star ✨", "🌟", 120000, "Diamonds", VipTier.SVIP_3, 48, false, false),
-            LeaderboardItem(6, "user_me", "alex_vance", "Alex Vance (You)", "🚀", 34250, "Diamonds", VipTier.VIP_3, 14, false, false)
+            LeaderboardItem(
+                rank = 1,
+                userId = "ceo_rayan",
+                username = "rayan_mirza",
+                displayName = "RAYAN MIRZA (CEO)",
+                avatarEmoji = "👑",
+                avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+                scorePoints = 99999999,
+                metricLabel = "Diamonds",
+                vipTier = VipTier.VIP_9,
+                userLevel = 99,
+                isLiveNow = true,
+                isFollowing = true,
+                executiveRole = "CEO & FOUNDER",
+                whatsappDirectUrl = "https://wa.me/447868713315"
+            ),
+            LeaderboardItem(
+                rank = 2,
+                userId = "co_founder_alpha",
+                username = "alpha_rajpoot",
+                displayName = "ALPHA RAJPOOT",
+                avatarEmoji = "🦁",
+                avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+                scorePoints = 88888888,
+                metricLabel = "Diamonds",
+                vipTier = VipTier.VIP_9,
+                userLevel = 99,
+                isLiveNow = true,
+                isFollowing = true,
+                executiveRole = "CO-FOUNDER",
+                whatsappDirectUrl = "https://wa.me/447366387620"
+            ),
+            LeaderboardItem(
+                rank = 3,
+                userId = "ansharah_gahni",
+                username = "ansharah_gahni",
+                displayName = "ANSHARAH GAHNI",
+                avatarEmoji = "👸",
+                avatarUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
+                scorePoints = 78500000,
+                metricLabel = "Diamonds",
+                vipTier = VipTier.SVIP_7,
+                userLevel = 89,
+                isLiveNow = true,
+                isFollowing = true,
+                executiveRole = "TOP HOST QUEEN"
+            ),
+            LeaderboardItem(4, "pixel_queen", "pixel_queen", "Elena 'PixelQueen'", "🎮", null, 690000, "Diamonds", VipTier.SVIP_2, 35, true, true),
+            LeaderboardItem(4, "apex_arenas", "apex_arenas", "Apex Arenas", "⚔️", null, 520000, "Diamonds", VipTier.SVIP_1, 31, true, false),
+            LeaderboardItem(5, "dj_kai", "kai_sterling", "Kai Sterling", "🎧", null, 284000, "Diamonds", VipTier.VIP_5, 28, true, true),
+            LeaderboardItem(6, "marcus_voice", "marcus_vance", "Marcus Vance", "☕", null, 145000, "Diamonds", VipTier.VIP_2, 22, true, true),
+            LeaderboardItem(7, "user_me", "alex_vance", "Alex Vance (You)", "🚀", null, 34250, "Diamonds", VipTier.VIP_3, 14, false, false)
         )
     }
 
@@ -251,6 +300,7 @@ fun PodiumCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Box(
         modifier = modifier
             .height(height)
@@ -265,7 +315,7 @@ fun PodiumCard(
             )
             .border(1.5.dp, badgeColor.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
             .clickable { onClick() }
-            .padding(10.dp),
+            .padding(8.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
@@ -273,17 +323,50 @@ fun PodiumCard(
             verticalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxSize()
         ) {
-            Text(text = crownEmoji, fontSize = 22.sp)
-
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(DarkBackground)
-                    .border(2.dp, badgeColor, CircleShape),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = item.avatarEmoji, fontSize = 24.sp)
+                Text(text = crownEmoji, fontSize = 20.sp)
+                if (item.whatsappDirectUrl != null) {
+                    val phone = if (item.userId == "ceo_rayan") "+44 7868 713315" else "+447366 387620"
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF25D366))
+                            .clickable {
+                                openWhatsAppChat(context, phone, item.displayName)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "💬", fontSize = 12.sp)
+                    }
+                }
+            }
+
+            if (item.vipTier == VipTier.VIP_9 || !item.avatarUrl.isNullOrBlank()) {
+                ExecutiveAvatar(
+                    avatarUrl = item.avatarUrl,
+                    avatarEmoji = item.avatarEmoji,
+                    size = 50.dp,
+                    userLevel = item.userLevel,
+                    vipTier = item.vipTier,
+                    showCrown = false,
+                    showLevelBadge = true
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(DarkBackground)
+                        .border(2.dp, badgeColor, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = item.avatarEmoji, fontSize = 24.sp)
+                }
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

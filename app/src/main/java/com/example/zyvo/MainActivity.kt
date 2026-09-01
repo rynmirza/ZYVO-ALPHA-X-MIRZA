@@ -153,11 +153,15 @@ fun ZyvoApp(
                         selectedCategory = selectedCategory,
                         searchQuery = searchQuery,
                         coinBalance = userCoinBalance,
+                        ceoProfile = userProfiles["ceo_rayan"],
+                        coFounderProfile = userProfiles["co_founder_alpha"],
+                        ansharahProfile = userProfiles["ansharah_gahni"],
                         onSelectCategory = { viewModel.setSelectedCategory(it) },
                         onSearchQueryChange = { viewModel.setSearchQuery(it) },
                         onRoomClick = { room -> viewModel.joinRoom(room.id) },
                         onGoLiveClick = { viewModel.setShowCreateRoomSheet(true) },
-                        onOpenAnalyticsClick = { activeSubView = "rankings" }
+                        onOpenAnalyticsClick = { activeSubView = "rankings" },
+                        onOpenUserDetail = { userId -> viewModel.openUserProfile(userId) }
                     )
                     1 -> FollowingScreen(
                         followedRooms = followedRooms,
@@ -221,7 +225,8 @@ fun ZyvoApp(
                     onOpenDm = { viewModel.openDmChat(selectedUserProfile!!.userId) },
                     onBlock = { viewModel.blockUser(selectedUserProfile!!.userId) },
                     onReport = { viewModel.reportUser(selectedUserProfile!!.userId, "Inappropriate Content") },
-                    onJoinLive = { roomId -> viewModel.joinRoom(roomId) }
+                    onJoinLive = { roomId -> viewModel.joinRoom(roomId) },
+                    onOpenUserDetail = { userId -> viewModel.openUserProfile(userId) }
                 )
             }
 

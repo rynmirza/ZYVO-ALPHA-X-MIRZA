@@ -10,6 +10,7 @@ data class LiveRoom(
     val creatorIdentity: String,
     val hostName: String,
     val hostAvatar: String = "🌟",
+    val hostAvatarUrl: String? = null,
     val roomType: RoomType = RoomType.SINGLE_LIVE,
     val category: String = "Entertainment",
     val tags: List<String> = emptyList(),

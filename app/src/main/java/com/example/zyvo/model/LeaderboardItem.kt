@@ -25,10 +25,13 @@ data class LeaderboardItem(
     val username: String,
     val displayName: String,
     val avatarEmoji: String,
+    val avatarUrl: String? = null,
     val scorePoints: Long,
     val metricLabel: String,
     val vipTier: VipTier = VipTier.NONE,
     val userLevel: Int = 1,
     val isLiveNow: Boolean = false,
-    val isFollowing: Boolean = false
+    val isFollowing: Boolean = false,
+    val executiveRole: String? = null,
+    val whatsappDirectUrl: String? = null
 )

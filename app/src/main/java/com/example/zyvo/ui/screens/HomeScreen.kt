@@ -19,13 +19,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.zyvo.model.LiveRoom
 import com.example.zyvo.model.RoomType
+import com.example.zyvo.model.UserProfile
+import com.example.zyvo.model.VipTier
+import com.example.zyvo.ui.components.ExecutiveAvatar
+import com.example.zyvo.ui.components.ExecutiveGrandBanner
+import com.example.zyvo.ui.components.openWhatsAppChat
 import com.example.zyvo.ui.theme.*
 
 @Composable
@@ -34,11 +43,15 @@ fun HomeScreen(
     selectedCategory: RoomType?,
     searchQuery: String,
     coinBalance: Int,
+    ceoProfile: UserProfile? = null,
+    coFounderProfile: UserProfile? = null,
+    ansharahProfile: UserProfile? = null,
     onSelectCategory: (RoomType?) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onRoomClick: (LiveRoom) -> Unit,
     onGoLiveClick: () -> Unit,
-    onOpenAnalyticsClick: () -> Unit
+    onOpenAnalyticsClick: () -> Unit,
+    onOpenUserDetail: ((String) -> Unit)? = null
 ) {
     var selectedTopTab by remember { mutableStateOf(1) } // 0: Following, 1: Popular, 2: PK, 3: Audio, 4: New
 
@@ -122,6 +135,19 @@ fun HomeScreen(
                 }
             }
 
+            // High Impact CEO Rayan Mirza & Co-Founder Alpha Rajpoot Grand Showcase Banner
+            item {
+                ExecutiveGrandBanner(
+                    ceoProfile = ceoProfile,
+                    coFounderProfile = coFounderProfile,
+                    onOpenProfile = { userId -> onOpenUserDetail?.invoke(userId) },
+                    onOpenLiveRoom = { roomId ->
+                        val room = rooms.find { it.id == roomId }
+                        if (room != null) onRoomClick(room)
+                    }
+                )
+            }
+
             // Hero Promo Banner (Exact visual style of reference layout)
             item {
                 Box(
@@ -148,7 +174,7 @@ fun HomeScreen(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(GoldAccent)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text("OFFICIAL CONTEST", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.Black)
                             }
@@ -187,17 +213,22 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Popular Hosts",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Hall of Fame & Popular Hosts",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("👑", fontSize = 16.sp)
+                        }
 
                         Text(
                             text = "View all >",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted
+                            color = TextMuted,
+                            modifier = Modifier.clickable { onOpenAnalyticsClick() }
                         )
                     }
 
@@ -207,25 +238,174 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // CEO Rayan Mirza (Rank #1)
+                        item {
+                            val context = LocalContext.current
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable { onOpenUserDetail?.invoke("ceo_rayan") }
+                            ) {
+                                ExecutiveAvatar(
+                                    avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+                                    avatarEmoji = "👑",
+                                    size = 58.dp,
+                                    userLevel = 99,
+                                    vipTier = VipTier.VIP_9,
+                                    showCrown = true,
+                                    showLevelBadge = true
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "RAYAN MIRZA",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = GoldAccent,
+                                    maxLines = 1
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "★ 99.9M",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF25D366))
+                                            .clickable {
+                                                openWhatsAppChat(context, "+44 7868 713315", "RAYAN MIRZA")
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("💬", fontSize = 9.sp)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Co-Founder Alpha Rajpoot (Rank #2)
+                        item {
+                            val context = LocalContext.current
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable { onOpenUserDetail?.invoke("co_founder_alpha") }
+                            ) {
+                                ExecutiveAvatar(
+                                    avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+                                    avatarEmoji = "🦁",
+                                    size = 58.dp,
+                                    userLevel = 99,
+                                    vipTier = VipTier.VIP_9,
+                                    showCrown = true,
+                                    showLevelBadge = true
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "ALPHA RAJPOOT",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = NeonCyan,
+                                    maxLines = 1
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "★ 88.8M",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF25D366))
+                                            .clickable {
+                                                openWhatsAppChat(context, "+447366 387620", "ALPHA RAJPOOT")
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("💬", fontSize = 9.sp)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Top Host Queen: Ansharah Gahni (Rank #3 / SVIP 7)
+                        item {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable { onOpenUserDetail?.invoke("ansharah_gahni") }
+                            ) {
+                                ExecutiveAvatar(
+                                    avatarUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
+                                    avatarEmoji = "👸",
+                                    size = 58.dp,
+                                    userLevel = 89,
+                                    vipTier = VipTier.SVIP_7,
+                                    showCrown = true,
+                                    showLevelBadge = true
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "ANSHARAH GAHNI",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFFFF00AA),
+                                    maxLines = 1
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "★ 78.5M",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color(0xFFFF007A))
+                                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(
+                                            text = "SVIP 7",
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         val popularHosts = listOf(
-                            Triple("King Of King's", "👑", "127.5M"),
-                            Triple("Drama Queen", "🦁", "98.7M"),
-                            Triple("Jannatul Islam", "🌸", "75.2M"),
-                            Triple("Husnat Smita", "🎤", "64.1M"),
-                            Triple("Nusrat Jahan", "🌟", "52.9M")
+                            Triple("Elena 'PixelQueen'", "🎮", "69.0M"),
+                            Triple("Apex Arenas", "⚔️", "52.0M"),
+                            Triple("Kai Sterling", "🎧", "28.4M"),
+                            Triple("Marcus Vance", "☕", "14.5M")
                         )
 
                         items(popularHosts) { (name, emoji, score) ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Box(
                                     modifier = Modifier
-                                        .size(60.dp)
+                                        .size(56.dp)
                                         .clip(CircleShape)
                                         .background(DarkSurface)
-                                        .border(2.dp, GoldAccent, CircleShape),
+                                        .border(1.5.dp, GoldAccent.copy(alpha = 0.5f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(text = emoji, fontSize = 28.sp)
+                                    Text(text = emoji, fontSize = 26.sp)
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -254,23 +434,23 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Top Live",
+                        text = "Top Live Broadcasts",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
 
                     Text(
-                        text = "View all >",
+                        text = "${rooms.size} Active",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
+                        color = NeonCyan
                     )
                 }
             }
 
             // 2x2 Top Live Cards Grid
             if (rooms.isNotEmpty()) {
-                val gridRooms = rooms.take(4)
+                val gridRooms = rooms.take(6)
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         gridRooms.chunked(2).forEach { rowRooms ->
@@ -279,17 +459,26 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 rowRooms.forEach { room ->
+                                    val isExecutive = room.creatorIdentity == "ceo_rayan" || room.creatorIdentity == "co_founder_alpha"
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(180.dp)
+                                            .height(190.dp)
                                             .clip(RoundedCornerShape(18.dp))
                                             .background(
                                                 Brush.verticalGradient(
-                                                    listOf(Color(0xFF321252), DarkSurface)
+                                                    if (isExecutive) {
+                                                        listOf(Color(0xFF42083D), DarkSurface)
+                                                    } else {
+                                                        listOf(Color(0xFF321252), DarkSurface)
+                                                    }
                                                 )
                                             )
-                                            .border(1.dp, OverlayLight, RoundedCornerShape(18.dp))
+                                            .border(
+                                                if (isExecutive) 2.dp else 1.dp,
+                                                if (isExecutive) GoldAccent else OverlayLight,
+                                                RoundedCornerShape(18.dp)
+                                            )
                                             .clickable { onRoomClick(room) }
                                             .padding(10.dp)
                                     ) {
@@ -306,10 +495,15 @@ fun HomeScreen(
                                                 Box(
                                                     modifier = Modifier
                                                         .clip(RoundedCornerShape(6.dp))
-                                                        .background(LiveRed)
+                                                        .background(if (isExecutive) GoldAccent else LiveRed)
                                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                                 ) {
-                                                    Text("LIVE", fontSize = 9.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                                                    Text(
+                                                        text = if (isExecutive) "👑 OFFICIAL" else "LIVE",
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Black,
+                                                        color = if (isExecutive) Color.Black else TextPrimary
+                                                    )
                                                 }
 
                                                 Text(
@@ -325,7 +519,23 @@ fun HomeScreen(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Text(text = room.hostAvatar, fontSize = 42.sp)
+                                                if (!room.hostAvatarUrl.isNullOrBlank()) {
+                                                    val context = LocalContext.current
+                                                    AsyncImage(
+                                                        model = ImageRequest.Builder(context)
+                                                            .data(room.hostAvatarUrl)
+                                                            .crossfade(true)
+                                                            .build(),
+                                                        contentDescription = room.hostName,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .size(54.dp)
+                                                            .clip(CircleShape)
+                                                            .border(2.dp, if (isExecutive) GoldAccent else NeonCyan, CircleShape)
+                                                    )
+                                                } else {
+                                                    Text(text = room.hostAvatar, fontSize = 42.sp)
+                                                }
                                             }
 
                                             // Bottom Details
@@ -334,7 +544,7 @@ fun HomeScreen(
                                                     text = room.hostName,
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = TextPrimary,
+                                                    color = if (isExecutive) GoldAccent else TextPrimary,
                                                     maxLines = 1
                                                 )
                                                 Text(

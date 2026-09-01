@@ -138,6 +138,98 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
 
     private fun initializeInitialUsers() {
         val initialUsers = mapOf(
+            "ceo_rayan" to UserProfile(
+                userId = "ceo_rayan",
+                username = "rayan_mirza",
+                displayName = "RAYAN MIRZA",
+                avatarEmoji = "👑",
+                avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+                coverGradientIndex = 0,
+                bio = "👑 Founder & Chief Executive Officer (CEO) of ZYVO. Empowering millions of creators worldwide. Contact executive desk via WhatsApp: +44 7868 713315",
+                gender = "Male",
+                location = "London, UK 🇬🇧 / Global HQ 🌍",
+                userLevel = 99,
+                userXp = 9999999,
+                nextLevelXp = 10000000,
+                wealthLevel = 99,
+                hostLevel = 99,
+                vipTier = VipTier.VIP_9,
+                vipExpiresTimestamp = System.currentTimeMillis() + (365L * 24 * 3600 * 1000),
+                followersCount = 9850000,
+                followingCount = 99,
+                likesCount = 158000000,
+                diamondsEarnedTotal = 99999999,
+                giftsReceivedTotal = 99999,
+                liveStreamsCount = 999,
+                badges = listOf("👑 CEO & Founder", "💎 VIP 9 SUPREME", "⭐ Lv.99 Sovereign", "Official Verified", "God Tier Creator"),
+                isFollowedByCurrentUser = true,
+                isLiveNow = true,
+                currentRoomId = "room_ceo_999",
+                executiveRole = "CEO & FOUNDER",
+                whatsappNumber = "+44 7868 713315",
+                whatsappDirectUrl = "https://wa.me/447868713315"
+            ),
+            "co_founder_alpha" to UserProfile(
+                userId = "co_founder_alpha",
+                username = "alpha_rajpoot",
+                displayName = "ALPHA RAJPOOT",
+                avatarEmoji = "🦁",
+                avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+                coverGradientIndex = 2,
+                bio = "🔥 Co-Founder & Executive Director at ZYVO. Head of Global PK Arenas, Creator Growth & Strategic Partnerships. WhatsApp Executive Desk: +447366 387620",
+                gender = "Male",
+                location = "London, UK 🇬🇧 / Global Operations 🌍",
+                userLevel = 99,
+                userXp = 9999999,
+                nextLevelXp = 10000000,
+                wealthLevel = 99,
+                hostLevel = 99,
+                vipTier = VipTier.VIP_9,
+                vipExpiresTimestamp = System.currentTimeMillis() + (365L * 24 * 3600 * 1000),
+                followersCount = 8420000,
+                followingCount = 88,
+                likesCount = 132000000,
+                diamondsEarnedTotal = 88888888,
+                giftsReceivedTotal = 88888,
+                liveStreamsCount = 888,
+                badges = listOf("🛡️ Co-Founder", "💎 VIP 9 SUPREME", "⭐ Lv.99 Sovereign", "Official Verified", "PK Grandmaster"),
+                isFollowedByCurrentUser = true,
+                isLiveNow = true,
+                currentRoomId = "room_alpha_888",
+                executiveRole = "CO-FOUNDER & EXECUTIVE DIRECTOR",
+                whatsappNumber = "+447366 387620",
+                whatsappDirectUrl = "https://wa.me/447366387620"
+            ),
+            "ansharah_gahni" to UserProfile(
+                userId = "ansharah_gahni",
+                username = "ansharah_gahni",
+                displayName = "ANSHARAH GAHNI",
+                avatarEmoji = "👸",
+                avatarUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
+                coverGradientIndex = 3,
+                bio = "✨ TOP HOST & ZYVO GLOBAL QUEEN 👑 Level 89 Superstar • SVIP 7 • Receiving Millions Daily 💖 Officially Following Founder Rayan Mirza & Co-Founder Alpha Rajpoot 🌍",
+                gender = "Female",
+                location = "Dubai, UAE 🇦🇪 / Global Host Stage 🌍",
+                userLevel = 89,
+                userXp = 8900000,
+                nextLevelXp = 9000000,
+                wealthLevel = 89,
+                hostLevel = 89,
+                vipTier = VipTier.SVIP_7,
+                vipExpiresTimestamp = System.currentTimeMillis() + (365L * 24 * 3600 * 1000),
+                followersCount = 7650000,
+                followingCount = 2,
+                followingUserIds = listOf("ceo_rayan", "co_founder_alpha"),
+                likesCount = 98500000,
+                diamondsEarnedTotal = 78500000,
+                giftsReceivedTotal = 75800,
+                liveStreamsCount = 740,
+                badges = listOf("💎 SVIP 7 QUEEN", "👑 Top Host Queen", "⭐ Lv.89 Superstar", "Official Verified Broadcaster", "Million Receiving Elite"),
+                isFollowedByCurrentUser = true,
+                isLiveNow = true,
+                currentRoomId = "room_ansharah_777",
+                isTopHost = true
+            ),
             "dj_kai" to UserProfile(
                 userId = "dj_kai",
                 username = "kai_sterling",
@@ -313,6 +405,61 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
     }
 
     private fun initializeInitialRooms() {
+        val ceoRoom = LiveRoom(
+            id = "room_ceo_999",
+            title = "👑 CEO RAYAN MIRZA | Official Global Keynote & Creator Summit",
+            description = "Welcome to ZYVO HQ Live Stream! Discussing new features, massive creator rewards, and global partnership opportunities. Direct WhatsApp available.",
+            creatorIdentity = "ceo_rayan",
+            hostName = "RAYAN MIRZA (CEO)",
+            hostAvatar = "👑",
+            hostAvatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+            roomType = RoomType.SINGLE_LIVE,
+            category = "Official",
+            tags = listOf("CEO", "Official", "Summit", "VIP9", "Lv99"),
+            viewerCount = 148900,
+            likesCount = 2850000,
+            enableChat = true
+        )
+
+        val alphaRoom = LiveRoom(
+            id = "room_alpha_888",
+            title = "⚔️ ALPHA RAJPOOT | Zyvo Executive PK Battle & 10M Diamond Drop",
+            description = "High stakes Executive Battle Stage! Dropping millions of diamonds and golden gifts for the community.",
+            creatorIdentity = "co_founder_alpha",
+            hostName = "ALPHA RAJPOOT (CO-FOUNDER)",
+            hostAvatar = "🦁",
+            hostAvatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+            roomType = RoomType.PK_BATTLE,
+            category = "PK Arena",
+            tags = listOf("CoFounder", "PK", "HighStakes", "VIP9", "Lv99"),
+            viewerCount = 112400,
+            likesCount = 1950000,
+            pkState = PkState(
+                isActive = true,
+                targetHostName = "Apex Arenas",
+                targetHostAvatar = "⚔️",
+                myScore = 890000,
+                targetScore = 650000,
+                remainingSeconds = 240
+            )
+        )
+
+        val ansharahRoom = LiveRoom(
+            id = "room_ansharah_777",
+            title = "💎 ANSHARAH GAHNI | Top Host Queen Live & 50M Diamond Gala 👑",
+            description = "Welcome to Ansharah Gahni's Official Live Stage! Level 89 Top Host • SVIP 7 • Dropping massive rewards with Founder & Co-Founder backing!",
+            creatorIdentity = "ansharah_gahni",
+            hostName = "ANSHARAH GAHNI",
+            hostAvatar = "👸",
+            hostAvatarUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
+            roomType = RoomType.SINGLE_LIVE,
+            category = "Top Host",
+            tags = listOf("TopHost", "SVIP7", "Lv89", "Queen", "Official"),
+            viewerCount = 98400,
+            likesCount = 1650000,
+            enableChat = true
+        )
+
         val singleRoom = LiveRoom(
             id = "room_single_101",
             title = "🔥 Cyberpunk Beats & Chill DJ Session",
@@ -416,10 +563,25 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             )
         )
 
-        _rooms.value = listOf(singleRoom, multiRoom, audioRoom, pkRoom, teamRoom)
+        _rooms.value = listOf(ceoRoom, alphaRoom, ansharahRoom, singleRoom, multiRoom, audioRoom, pkRoom, teamRoom)
 
         // Pre-fill initial chat messages
         _chatMessages.value = mapOf(
+            "room_ceo_999" to listOf(
+                ChatMessage("c01", "system", "ZYVO HQ", senderAvatar = "👑", text = "👑 WELCOME TO CEO RAYAN MIRZA OFFICIAL KEYNOTE LIVE! VIP 9 ACTIVE.", type = MessageType.SYSTEM),
+                ChatMessage("c02", "vip_fan", "Lord_Vanguard", "💎", "Glory to CEO Rayan Mirza! Sent 50x Golden Dragons! 🐉"),
+                ChatMessage("c03", "creator_1", "Mia_Vocal", "🎤", "Thank you for the creator fund upgrade! Zyvo is #1 🔥")
+            ),
+            "room_alpha_888" to listOf(
+                ChatMessage("c04", "system", "ZYVO HQ", senderAvatar = "🛡️", text = "⚔️ WELCOME TO CO-FOUNDER ALPHA RAJPOOT EXECUTIVE PK ARENA! VIP 9 ACTIVE.", type = MessageType.SYSTEM),
+                ChatMessage("c05", "pk_titan", "Gamer_Rex", "🦁", "Alpha Rajpoot crushing the arena! 100k combo!! 💥")
+            ),
+            "room_ansharah_777" to listOf(
+                ChatMessage("ca1", "system", "ZYVO HQ", senderAvatar = "💎", text = "👑 WELCOME TO TOP HOST ANSHARAH GAHNI OFFICIAL LIVE! SVIP 7 ACTIVE.", type = MessageType.SYSTEM),
+                ChatMessage("ca2", "ceo_rayan", "RAYAN MIRZA (CEO)", "👑", "Welcome Ansharah to the Top Host Spotlight! 💎 Sent 100,000 Diamonds!"),
+                ChatMessage("ca3", "co_founder_alpha", "ALPHA RAJPOOT", "🦁", "Keep shining Queen Ansharah! Top Host power! 🔥"),
+                ChatMessage("ca4", "vip_fan", "CrownPrince_99", "💎", "Sent 10x Galactic Dragon Palace to Queen Ansharah! 👸")
+            ),
             "room_single_101" to listOf(
                 ChatMessage("c1", "system", "System", senderAvatar = "📢", text = "Welcome to Kai's Synthwave Live Room! 🎉", type = MessageType.SYSTEM),
                 ChatMessage("c2", "user_1", "SynthFan_99", "🎧", "That drop was insane!! 🔥"),
