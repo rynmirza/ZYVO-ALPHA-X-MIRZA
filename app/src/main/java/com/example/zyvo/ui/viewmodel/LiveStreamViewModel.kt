@@ -12,12 +12,34 @@ class LiveStreamViewModel(
 
     val isLoggedIn: StateFlow<Boolean> = repository.isLoggedIn
 
-    val currentUserIdentity: String = repository.currentUserIdentity
-    val currentUserName: String = repository.currentUserName
-    val currentUserAvatar: String = repository.currentUserAvatar
+    val currentUserIdentity: String
+        get() = repository.currentUserIdentity
+
+    val currentUserName: String
+        get() = repository.currentUserName
+
+    val currentUserAvatar: String
+        get() = repository.currentUserAvatar
+
+    fun initPersistence(context: android.content.Context) {
+        repository.initPersistence(context)
+    }
 
     fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String, avatarUrl: String? = null) {
         repository.loginWithGoogle(displayName, email, avatarEmoji, avatarUrl)
+    }
+
+    fun createCustomProfileAndLogin(
+        displayName: String,
+        username: String,
+        email: String,
+        avatarEmoji: String,
+        avatarUrl: String? = null,
+        bio: String = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
+        gender: String = "Unspecified",
+        location: String = "Global HQ 🌍"
+    ) {
+        repository.createCustomProfileAndLogin(displayName, username, email, avatarEmoji, avatarUrl, bio, gender, location)
     }
 
     fun logout() {

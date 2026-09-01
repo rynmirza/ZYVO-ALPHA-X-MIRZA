@@ -1,5 +1,6 @@
 package com.example.zyvo.data
 
+import android.content.Context
 import com.example.zyvo.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -9,32 +10,116 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.UUID
 
 class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)) {
 
-    val currentUserIdentity: String = "user_me"
-    val currentUserName: String = "Alex Vance"
-    val currentUserAvatar: String = "🚀"
+    val currentUserIdentity: String
+        get() = _currentUserProfile.value.userId
+
+    val currentUserName: String
+        get() = _currentUserProfile.value.displayName
+
+    val currentUserAvatar: String
+        get() = _currentUserProfile.value.avatarEmoji
 
     // Auth state
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
-    fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String, avatarUrl: String? = null) {
-        val cleanUid = "user_google_" + UUID.randomUUID().toString().take(8)
-        val generatedUsername = email.substringBefore("@").replace(".", "_").lowercase()
-        
+    private var sharedPreferences: android.content.SharedPreferences? = null
+
+    fun initPersistence(context: Context) {
+        if (sharedPreferences != null) return
+        val prefs = context.getSharedPreferences("zyvo_user_session_v2", Context.MODE_PRIVATE)
+        sharedPreferences = prefs
+
+        val isLoggedInSaved = prefs.getBoolean("is_logged_in", false)
+        if (isLoggedInSaved) {
+            val userJson = prefs.getString("current_user_profile_json", null)
+            if (!userJson.isNullOrBlank()) {
+                val restoredProfile = jsonToUserProfile(userJson)
+                if (restoredProfile != null) {
+                    _currentUserProfile.value = restoredProfile
+                    _userProfiles.update { map -> map + (restoredProfile.userId to restoredProfile) }
+                    _userCoinBalance.value = prefs.getInt("user_coin_balance", 500)
+                    _userBeansBalance.value = prefs.getInt("user_beans_balance", 0)
+
+                    val savedFollowing = prefs.getStringSet("following_user_ids", null)
+                    if (savedFollowing != null) {
+                        _followingUserIds.value = savedFollowing
+                    }
+
+                    _isLoggedIn.value = true
+                }
+            }
+        }
+
+        // Restore any extra custom created user profiles saved locally
+        val customProfilesJson = prefs.getString("all_custom_profiles_json", null)
+        if (!customProfilesJson.isNullOrBlank()) {
+            val customMap = jsonToUserProfilesMap(customProfilesJson)
+            if (customMap.isNotEmpty()) {
+                _userProfiles.update { map -> map + customMap }
+            }
+        }
+    }
+
+    private fun saveSessionToPrefs() {
+        val prefs = sharedPreferences ?: return
+        try {
+            val profileJson = userProfileToJson(_currentUserProfile.value)
+            val customProfilesJson = userProfilesMapToJson(_userProfiles.value)
+            prefs.edit()
+                .putBoolean("is_logged_in", _isLoggedIn.value)
+                .putString("current_user_profile_json", profileJson)
+                .putInt("user_coin_balance", _userCoinBalance.value)
+                .putInt("user_beans_balance", _userBeansBalance.value)
+                .putStringSet("following_user_ids", _followingUserIds.value)
+                .putString("all_custom_profiles_json", customProfilesJson)
+                .apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun clearSessionFromPrefs() {
+        val prefs = sharedPreferences ?: return
+        prefs.edit()
+            .putBoolean("is_logged_in", false)
+            .remove("current_user_profile_json")
+            .apply()
+    }
+
+    fun createCustomProfileAndLogin(
+        displayName: String,
+        username: String,
+        email: String,
+        avatarEmoji: String,
+        avatarUrl: String? = null,
+        bio: String = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
+        gender: String = "Unspecified",
+        location: String = "Global HQ 🌍"
+    ) {
+        val sanitizedUsername = (if (username.isBlank()) email.substringBefore("@") else username)
+            .replace(".", "_")
+            .lowercase()
+            .filter { it.isLetterOrDigit() || it == '_' }
+        val finalUsername = if (sanitizedUsername.isBlank()) "broadcaster" else sanitizedUsername
+        val cleanUid = "user_${finalUsername}_" + UUID.randomUUID().toString().take(6)
+
         val newProfile = UserProfile(
             userId = cleanUid,
-            username = generatedUsername,
-            displayName = displayName,
-            avatarEmoji = avatarEmoji,
+            username = finalUsername,
+            displayName = displayName.ifBlank { "ZYVO Broadcaster" },
+            avatarEmoji = avatarEmoji.ifBlank { "🚀" },
             avatarUrl = avatarUrl,
             coverGradientIndex = 0,
-            bio = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
-            gender = "Unspecified",
-            location = "Global HQ 🌍",
+            bio = bio.ifBlank { "Official ZYVO Broadcaster 🎙️ Live on ZYVO!" },
+            gender = gender,
+            location = location,
             userLevel = 1,
             userXp = 0,
             nextLevelXp = 1000,
@@ -49,7 +134,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             diamondsEarnedTotal = 0,
             giftsReceivedTotal = 0,
             liveStreamsCount = 0,
-            badges = listOf("Verified User"),
+            badges = listOf("Verified Broadcaster", "New Creator"),
             isLiveNow = false
         )
 
@@ -58,13 +143,29 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             map + (cleanUid to newProfile)
         }
         _followingUserIds.value = setOf("ceo_rayan", "co_founder_alpha", "ansharah_gahni")
-        _userCoinBalance.value = 500 // Welcome bonus coins
+        _userCoinBalance.value = 500
         _userBeansBalance.value = 0
         _isLoggedIn.value = true
+
+        saveSessionToPrefs()
+    }
+
+    fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String, avatarUrl: String? = null) {
+        createCustomProfileAndLogin(
+            displayName = displayName,
+            username = email.substringBefore("@"),
+            email = email,
+            avatarEmoji = avatarEmoji,
+            avatarUrl = avatarUrl,
+            bio = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
+            gender = "Not Specified",
+            location = "Global HQ 🌍"
+        )
     }
 
     fun logout() {
         _isLoggedIn.value = false
+        clearSessionFromPrefs()
     }
 
     // Current User Profile
@@ -504,6 +605,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
         _userProfiles.update { map ->
             map + (updated.userId to updated)
         }
+        saveSessionToPrefs()
     }
 
     fun followUser(userId: String) {
@@ -518,6 +620,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             } else map
         }
         _currentUserProfile.update { it.copy(followingCount = it.followingCount + 1) }
+        saveSessionToPrefs()
     }
 
     fun unfollowUser(userId: String) {
@@ -532,6 +635,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             } else map
         }
         _currentUserProfile.update { it.copy(followingCount = maxOf(0, it.followingCount - 1)) }
+        saveSessionToPrefs()
     }
 
     fun blockUser(userId: String) {
@@ -1185,5 +1289,132 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
                 }
             }
         }
+    }
+
+    // JSON Helper Methods for Session Persistence
+    private fun userProfileToJson(profile: UserProfile): String {
+        val json = JSONObject()
+        json.put("userId", profile.userId)
+        json.put("username", profile.username)
+        json.put("displayName", profile.displayName)
+        json.put("avatarEmoji", profile.avatarEmoji)
+        json.put("avatarUrl", profile.avatarUrl ?: "")
+        json.put("coverGradientIndex", profile.coverGradientIndex)
+        json.put("bio", profile.bio)
+        json.put("gender", profile.gender)
+        json.put("location", profile.location)
+        json.put("userLevel", profile.userLevel)
+        json.put("userXp", profile.userXp)
+        json.put("nextLevelXp", profile.nextLevelXp)
+        json.put("wealthLevel", profile.wealthLevel)
+        json.put("hostLevel", profile.hostLevel)
+        json.put("vipTier", profile.vipTier.name)
+        json.put("vipExpiresTimestamp", profile.vipExpiresTimestamp ?: 0L)
+        json.put("followersCount", profile.followersCount)
+        json.put("followingCount", profile.followingCount)
+        json.put("likesCount", profile.likesCount)
+        json.put("diamondsEarnedTotal", profile.diamondsEarnedTotal)
+        json.put("giftsReceivedTotal", profile.giftsReceivedTotal)
+        json.put("liveStreamsCount", profile.liveStreamsCount)
+        json.put("badges", JSONArray(profile.badges))
+        json.put("isFollowedByCurrentUser", profile.isFollowedByCurrentUser)
+        json.put("isBlocked", profile.isBlocked)
+        json.put("isLiveNow", profile.isLiveNow)
+        json.put("currentRoomId", profile.currentRoomId ?: "")
+        json.put("executiveRole", profile.executiveRole ?: "")
+        json.put("whatsappNumber", profile.whatsappNumber ?: "")
+        json.put("whatsappDirectUrl", profile.whatsappDirectUrl ?: "")
+        json.put("followingUserIds", JSONArray(profile.followingUserIds))
+        json.put("isTopHost", profile.isTopHost)
+        return json.toString()
+    }
+
+    private fun jsonToUserProfile(jsonStr: String): UserProfile? {
+        return try {
+            val json = JSONObject(jsonStr)
+            val badgesArr = json.optJSONArray("badges")
+            val badgesList = mutableListOf<String>()
+            if (badgesArr != null) {
+                for (i in 0 until badgesArr.length()) {
+                    badgesList.add(badgesArr.getString(i))
+                }
+            }
+            val followingArr = json.optJSONArray("followingUserIds")
+            val followingList = mutableListOf<String>()
+            if (followingArr != null) {
+                for (i in 0 until followingArr.length()) {
+                    followingList.add(followingArr.getString(i))
+                }
+            }
+            val vipTierStr = json.optString("vipTier", "NONE")
+            val vipTierEnum = try { VipTier.valueOf(vipTierStr) } catch (e: Exception) { VipTier.NONE }
+
+            UserProfile(
+                userId = json.optString("userId", "user_me"),
+                username = json.optString("username", "user"),
+                displayName = json.optString("displayName", "User"),
+                avatarEmoji = json.optString("avatarEmoji", "🚀"),
+                avatarUrl = json.optString("avatarUrl").ifEmpty { null },
+                coverGradientIndex = json.optInt("coverGradientIndex", 0),
+                bio = json.optString("bio", "Live streaming enthusiast 🚀"),
+                gender = json.optString("gender", "Unspecified"),
+                location = json.optString("location", "Global 🌍"),
+                userLevel = json.optInt("userLevel", 1),
+                userXp = json.optInt("userXp", 0),
+                nextLevelXp = json.optInt("nextLevelXp", 1000),
+                wealthLevel = json.optInt("wealthLevel", 1),
+                hostLevel = json.optInt("hostLevel", 1),
+                vipTier = vipTierEnum,
+                vipExpiresTimestamp = if (json.optLong("vipExpiresTimestamp", 0L) > 0) json.optLong("vipExpiresTimestamp") else null,
+                followersCount = json.optInt("followersCount", 0),
+                followingCount = json.optInt("followingCount", 3),
+                likesCount = json.optInt("likesCount", 0),
+                diamondsEarnedTotal = json.optInt("diamondsEarnedTotal", 0),
+                giftsReceivedTotal = json.optInt("giftsReceivedTotal", 0),
+                liveStreamsCount = json.optInt("liveStreamsCount", 0),
+                badges = if (badgesList.isNotEmpty()) badgesList else listOf("Verified User"),
+                isFollowedByCurrentUser = json.optBoolean("isFollowedByCurrentUser", false),
+                isBlocked = json.optBoolean("isBlocked", false),
+                isLiveNow = json.optBoolean("isLiveNow", false),
+                currentRoomId = json.optString("currentRoomId").ifEmpty { null },
+                executiveRole = json.optString("executiveRole").ifEmpty { null },
+                whatsappNumber = json.optString("whatsappNumber").ifEmpty { null },
+                whatsappDirectUrl = json.optString("whatsappDirectUrl").ifEmpty { null },
+                followingUserIds = followingList,
+                isTopHost = json.optBoolean("isTopHost", false)
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun userProfilesMapToJson(map: Map<String, UserProfile>): String {
+        val jsonObj = JSONObject()
+        map.forEach { (key, profile) ->
+            jsonObj.put(key, JSONObject(userProfileToJson(profile)))
+        }
+        return jsonObj.toString()
+    }
+
+    private fun jsonToUserProfilesMap(jsonStr: String): Map<String, UserProfile> {
+        val resultMap = mutableMapOf<String, UserProfile>()
+        try {
+            val jsonObj = JSONObject(jsonStr)
+            val keys = jsonObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val profileObj = jsonObj.optJSONObject(key)
+                if (profileObj != null) {
+                    val profile = jsonToUserProfile(profileObj.toString())
+                    if (profile != null) {
+                        resultMap[key] = profile
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return resultMap
     }
 }

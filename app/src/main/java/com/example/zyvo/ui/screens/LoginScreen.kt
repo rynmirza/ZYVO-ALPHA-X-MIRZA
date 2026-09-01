@@ -18,12 +18,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,18 +45,34 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (displayName: String, email: String, avatarEmoji: String, photoUrl: String?) -> Unit
+    onLoginSuccess: (displayName: String, email: String, avatarEmoji: String, photoUrl: String?) -> Unit,
+    onCreateCustomProfile: (displayName: String, username: String, email: String, avatarEmoji: String, photoUrl: String?, bio: String, gender: String, location: String) -> Unit = { d, u, e, a, p, b, g, l ->
+        onLoginSuccess(d, e, a, p)
+    }
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var activeAuthTab by remember { mutableStateOf(0) } // 0: Quick & Google Login, 1: Create New Broadcaster Profile
     var isAuthenticating by remember { mutableStateOf(false) }
     var showDirectGoogleModal by remember { mutableStateOf(false) }
-    var statusMessage by remember { mutableStateOf<String?>(null) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Custom Profile Creation State
+    var customName by remember { mutableStateOf("") }
+    var customUsername by remember { mutableStateOf("") }
+    var customEmail by remember { mutableStateOf("") }
+    var customAvatarEmoji by remember { mutableStateOf("🚀") }
+    var customPhotoUrl by remember { mutableStateOf("") }
+    var customBio by remember { mutableStateOf("Official ZYVO Broadcaster 🎙️ Live on ZYVO!") }
+    var customGender by remember { mutableStateOf("Male") }
+    var customLocation by remember { mutableStateOf("Global HQ 🌍") }
+    var profileCreationError by remember { mutableStateOf<String?>(null) }
+
+    val avatarOptions = listOf("🚀", "👑", "🎧", "🎮", "🌟", "🔥", "⚡", "👾", "🎨", "🦄", "🦁", "💎")
 
     // Google Sign-In Client initialization
     val googleSignInClient: GoogleSignInClient = remember(context) {
@@ -88,12 +99,7 @@ fun LoginScreen(
             } else {
                 showDirectGoogleModal = true
             }
-        } catch (e: ApiException) {
-            // If Play Services intent is cancelled or requires web client configuration, provide direct Google Account auth modal
-            statusMessage = "Authenticating with Google Account..."
-            showDirectGoogleModal = true
         } catch (e: Exception) {
-            errorMessage = e.localizedMessage
             showDirectGoogleModal = true
         }
     }
@@ -115,206 +121,455 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 36.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top Section: App Brand & Hero Visuals
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 28.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ==========================================
+            // TOP SECTION: BRANDING & LOGO
+            // ==========================================
+            Box(
+                modifier = Modifier
+                    .size(88.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(ElectricMagenta, NeonPurple)
+                        )
+                    )
+                    .border(2.dp, GoldAccent, RoundedCornerShape(24.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                // Official Zyvo App Icon & Glowing Border
+                Image(
+                    painter = painterResource(id = R.drawable.ic_zyvo_logo),
+                    contentDescription = "Zyvo App Icon",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = "ZYVO",
+                fontSize = 38.sp,
+                fontWeight = FontWeight.Black,
+                color = TextPrimary,
+                letterSpacing = 4.sp
+            )
+
+            Text(
+                text = "WATCH • CONNECT • SHINE",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = NeonCyan,
+                letterSpacing = 2.sp
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // Persistent Session Status Pill
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF1F1135))
+                    .border(1.dp, Brush.horizontalGradient(listOf(NeonCyan, ElectricMagenta)), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = "Persistent Login",
+                        tint = GoldAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Auto Stay Logged In • Your profile is saved to this device",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ==========================================
+            // AUTH TABS: GOOGLE & FAST LOGIN vs CREATE NEW PROFILE
+            // ==========================================
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(DarkSurface)
+                    .border(1.dp, OverlayLight, RoundedCornerShape(16.dp))
+                    .padding(4.dp)
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(92.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(ElectricMagenta, NeonPurple)
-                            )
-                        )
-                        .border(2.dp, GoldAccent, RoundedCornerShape(24.dp)),
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (activeAuthTab == 0) NeonPurple else Color.Transparent)
+                        .clickable { activeAuthTab = 0 }
+                        .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_zyvo_logo),
-                        contentDescription = "Zyvo App Icon",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                    Text(
+                        text = "Sign In",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (activeAuthTab == 0) TextPrimary else TextSecondary
                     )
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Text(
-                    text = "ZYVO",
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Black,
-                    color = TextPrimary,
-                    letterSpacing = 4.sp
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "WATCH • CONNECT • SHINE",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NeonCyan,
-                    letterSpacing = 2.sp
-                )
-
-                Spacer(modifier = Modifier.height(28.dp))
-
-                // Hero Cards Carousel / Stats Pill
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (activeAuthTab == 1) NeonPurple else Color.Transparent)
+                        .clickable { activeAuthTab = 1 }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Create Profile 👑",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (activeAuthTab == 1) TextPrimary else TextSecondary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            if (activeAuthTab == 0) {
+                // ==========================================
+                // TAB 0: GOOGLE SIGN IN & QUICK ACCESS
+                // ==========================================
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Sign in to enter live rooms, host streams & manage your profile",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    // OFFICIAL GOOGLE SIGN IN BUTTON
+                    Button(
+                        onClick = {
+                            isAuthenticating = true
+                            try {
+                                val intent = googleSignInClient.signInIntent
+                                googleAuthLauncher.launch(intent)
+                            } catch (e: Exception) {
+                                isAuthenticating = false
+                                showDirectGoogleModal = true
+                            }
+                        },
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(DarkSurface)
-                            .border(1.dp, OverlayLight, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .testTag("login_google_button"),
+                        shape = RoundedCornerShape(27.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color(0xFF1F1F1F)
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+                        enabled = !isAuthenticating
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (isAuthenticating) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.5.dp,
+                                    color = Color(0xFF4285F4)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Connecting to Google...",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1F1F1F)
+                                )
+                            } else {
+                                GoogleGIcon(modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Continue with Google",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1F1F1F)
+                                )
+                            }
+                        }
+                    }
+
+                    // OR DIVIDER
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = OverlayLight)
+                        Text(
+                            text = "  OR QUICK ACCESS  ",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextMuted
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = OverlayLight)
+                    }
+
+                    // QUICK GUEST BROADCASTER LOGIN BUTTON
+                    OutlinedButton(
+                        onClick = {
+                            val guestNum = (1000..9999).random()
+                            val guestName = "Broadcaster #$guestNum"
+                            val guestEmail = "guest$guestNum@zyvo.live"
+                            val guestAvatar = listOf("🚀", "🎧", "⚡", "🌟", "🔥").random()
+                            onCreateCustomProfile(
+                                guestName,
+                                "guest_$guestNum",
+                                guestEmail,
+                                guestAvatar,
+                                null,
+                                "Official ZYVO Broadcaster 🎙️ Live on ZYVO!",
+                                "Unspecified",
+                                "Global HQ 🌍"
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .testTag("quick_guest_login_btn"),
+                        shape = RoundedCornerShape(25.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkCardElevated),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(brush = Brush.horizontalGradient(listOf(NeonCyan, ElectricMagenta)))
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🔴", fontSize = 12.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("⚡", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "14.8K Live Streams",
-                                fontSize = 11.sp,
+                                text = "Instant Guest Broadcaster Sign In",
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
                         }
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(DarkSurface)
-                            .border(1.dp, OverlayLight, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    // BUTTON TO SWITCH TO CUSTOM PROFILE CREATOR TAB
+                    TextButton(
+                        onClick = { activeAuthTab = 1 }
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("⚔️", fontSize = 12.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "PK Battles",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = GoldAccent
-                            )
-                        }
+                        Text(
+                            text = "✨ Want to setup a custom Broadcaster Profile? Click here",
+                            fontSize = 12.sp,
+                            color = NeonCyan,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
-            }
-
-            // Middle Section: Official Google Authentication Flow
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Sign in to enter live rooms, send gifts & join battles",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // OFFICIAL GOOGLE SIGN IN BUTTON
-                Button(
-                    onClick = {
-                        isAuthenticating = true
-                        try {
-                            val intent = googleSignInClient.signInIntent
-                            googleAuthLauncher.launch(intent)
-                        } catch (e: Exception) {
-                            isAuthenticating = false
-                            showDirectGoogleModal = true
-                        }
-                    },
+            } else {
+                // ==========================================
+                // TAB 1: CREATE NEW CUSTOM PROFILE FORM
+                // ==========================================
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .testTag("login_google_button"),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color(0xFF1F1F1F)
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 4.dp,
-                        pressedElevation = 1.dp
-                    ),
-                    contentPadding = PaddingValues(horizontal = 20.dp),
-                    enabled = !isAuthenticating
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(DarkSurface)
+                        .border(1.dp, OverlayLight, RoundedCornerShape(20.dp))
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        if (isAuthenticating) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.5.dp,
-                                color = Color(0xFF4285F4)
+                    Text(
+                        text = "Create Your Broadcaster Profile 🎙️",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = TextPrimary
+                    )
+
+                    // EMOJI AVATAR PICKER
+                    Column {
+                        Text(text = "SELECT PROFILE AVATAR EMOJI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            avatarOptions.take(6).forEach { emoji ->
+                                val isSelected = customAvatarEmoji == emoji
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) NeonPurple else DarkCardElevated)
+                                        .border(1.5.dp, if (isSelected) GoldAccent else OverlayLight, RoundedCornerShape(12.dp))
+                                        .clickable { customAvatarEmoji = emoji },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(text = emoji, fontSize = 22.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    // DISPLAY NAME
+                    OutlinedTextField(
+                        value = customName,
+                        onValueChange = { customName = it; profileCreationError = null },
+                        leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null, tint = NeonCyan) },
+                        label = { Text("Display Name / Broadcaster Name", fontSize = 12.sp) },
+                        placeholder = { Text("e.g. Rayan, Alex Vance, Cyber Queen", fontSize = 12.sp, color = TextMuted) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("custom_name_input"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = ElectricMagenta,
+                            unfocusedBorderColor = OverlayLight,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        )
+                    )
+
+                    // USERNAME & EMAIL
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = customUsername,
+                            onValueChange = { customUsername = it; profileCreationError = null },
+                            label = { Text("Username", fontSize = 12.sp) },
+                            placeholder = { Text("rayan99", fontSize = 12.sp, color = TextMuted) },
+                            singleLine = true,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("custom_username_input"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ElectricMagenta,
+                                unfocusedBorderColor = OverlayLight,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
+                        )
+
+                        OutlinedTextField(
+                            value = customEmail,
+                            onValueChange = { customEmail = it; profileCreationError = null },
+                            label = { Text("Email (Optional)", fontSize = 12.sp) },
+                            placeholder = { Text("name@gmail.com", fontSize = 12.sp, color = TextMuted) },
+                            singleLine = true,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("custom_email_input"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ElectricMagenta,
+                                unfocusedBorderColor = OverlayLight,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            )
+                        )
+                    }
+
+                    // PROFILE BIO & LOCATION
+                    OutlinedTextField(
+                        value = customBio,
+                        onValueChange = { customBio = it },
+                        label = { Text("Profile Bio / Tagline", fontSize = 12.sp) },
+                        placeholder = { Text("Tell viewers what you stream!", fontSize = 12.sp, color = TextMuted) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = ElectricMagenta,
+                            unfocusedBorderColor = OverlayLight,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        )
+                    )
+
+                    // ERROR MESSAGE IF ANY
+                    profileCreationError?.let { err ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, contentDescription = "Error", tint = Color(0xFFFF4D4F), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = err, color = Color(0xFFFF4D4F), fontSize = 11.sp)
+                        }
+                    }
+
+                    // SUBMIT & CREATE PROFILE BUTTON
+                    Button(
+                        onClick = {
+                            if (customName.isBlank()) {
+                                profileCreationError = "Please enter your Broadcaster Display Name."
+                            } else {
+                                val emailVal = customEmail.ifBlank { "${customName.lowercase().replace(" ", "")}@zyvo.live" }
+                                val usernameVal = customUsername.ifBlank { customName.lowercase().replace(" ", "_") }
+                                onCreateCustomProfile(
+                                    customName.trim(),
+                                    usernameVal.trim(),
+                                    emailVal.trim(),
+                                    customAvatarEmoji,
+                                    customPhotoUrl.ifBlank { null },
+                                    customBio.trim(),
+                                    customGender,
+                                    customLocation
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .testTag("submit_create_profile_btn"),
+                        shape = RoundedCornerShape(25.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonPurple)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Check, contentDescription = "Create", tint = TextPrimary)
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Connecting to Google...",
+                                text = "Create & Stay Logged In 🚀",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1F1F1F)
-                            )
-                        } else {
-                            // Official Google "G" Emblem
-                            GoogleGIcon(modifier = Modifier.size(24.dp))
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
-                            Text(
-                                text = "Continue with Google",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1F1F1F)
+                                color = TextPrimary
                             )
                         }
                     }
                 }
             }
 
-            // Bottom Section: Footer Legal & Security Note
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        Icons.Default.Security,
-                        contentDescription = "Secure",
-                        tint = TextMuted,
-                        modifier = Modifier.size(14.dp)
-                    )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // FOOTER & SECURITY
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Security, contentDescription = "Secure", tint = TextMuted, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Official Google OAuth & Play Identity",
+                        text = "Official Google OAuth & Persistent Account Storage",
                         fontSize = 11.sp,
                         color = TextMuted
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "By continuing, you agree to ZYVO Terms of Service & Privacy Policy",
@@ -325,7 +580,7 @@ fun LoginScreen(
             }
         }
 
-        // DIRECT GOOGLE ACCOUNT DIALOG (Official Google Sign-In Fallback & Direct Flow)
+        // DIRECT GOOGLE ACCOUNT DIALOG (Official Google Sign-In Fallback)
         if (showDirectGoogleModal) {
             var googleEmailInput by remember { mutableStateOf("") }
             var googleNameInput by remember { mutableStateOf("") }
@@ -424,22 +679,6 @@ fun LoginScreen(
                                 keyboardType = KeyboardType.Text,
                                 imeAction = ImeAction.Done
                             ),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    if (googleEmailInput.isBlank() || !googleEmailInput.contains("@")) {
-                                        inputError = "Please enter a valid Google email address."
-                                    } else {
-                                        isSubmitting = true
-                                        scope.launch {
-                                            delay(800)
-                                            isSubmitting = false
-                                            showDirectGoogleModal = false
-                                            val name = googleNameInput.ifBlank { googleEmailInput.substringBefore("@").replace(".", " ").capitalizeWords() }
-                                            onLoginSuccess(name, googleEmailInput.trim(), "👑", null)
-                                        }
-                                    }
-                                }
-                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("google_name_input"),
@@ -466,7 +705,7 @@ fun LoginScreen(
                                 } else {
                                     isSubmitting = true
                                     scope.launch {
-                                        delay(800)
+                                        delay(600)
                                         isSubmitting = false
                                         showDirectGoogleModal = false
                                         val name = googleNameInput.ifBlank { googleEmailInput.substringBefore("@").replace(".", " ").capitalizeWords() }
@@ -500,9 +739,6 @@ fun LoginScreen(
     }
 }
 
-/**
- * High quality vector Google 'G' icon matching Google brand specifications
- */
 @Composable
 fun GoogleGIcon(modifier: Modifier = Modifier) {
     Box(

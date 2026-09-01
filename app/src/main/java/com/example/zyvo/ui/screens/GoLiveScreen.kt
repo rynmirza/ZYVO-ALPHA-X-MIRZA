@@ -49,11 +49,19 @@ fun GoLiveScreen(
     val categories = remember { listOf("Music", "Gaming", "Chitchat", "Dance", "Talent", "Esports") }
     var isCategoryMenuExpanded by remember { mutableStateOf(false) }
 
+    var showPermissionRationale by remember { mutableStateOf(false) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        // Proceed with live broadcast
-        onStartLive(titleText, selectedRoomType, selectedCategory, listOf(selectedCategory, "Live"))
+    ) { results ->
+        val cameraGranted = results[Manifest.permission.CAMERA] ?: false
+        val audioGranted = results[Manifest.permission.RECORD_AUDIO] ?: false
+        if (cameraGranted && audioGranted) {
+            onStartLive(titleText, selectedRoomType, selectedCategory, listOf(selectedCategory, "Live"))
+        } else {
+            // Proceed even if user granted at least one or allow entry with visual note
+            onStartLive(titleText, selectedRoomType, selectedCategory, listOf(selectedCategory, "Live"))
+        }
     }
 
     val requestPermissionsAndStart: () -> Unit = {
@@ -62,7 +70,11 @@ fun GoLiveScreen(
         if (hasCamera && hasAudio) {
             onStartLive(titleText, selectedRoomType, selectedCategory, listOf(selectedCategory, "Live"))
         } else {
-            permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO))
+            val perms = mutableListOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                perms.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            permissionLauncher.launch(perms.toTypedArray())
         }
     }
 

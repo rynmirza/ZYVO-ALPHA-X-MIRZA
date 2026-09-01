@@ -1,5 +1,9 @@
 package com.example.zyvo.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.zyvo.model.*
@@ -34,6 +39,7 @@ fun LiveRoomScreen(
     viewModel: LiveStreamViewModel,
     onLeaveRoom: () -> Unit
 ) {
+    val context = LocalContext.current
     val currentRoomChat by viewModel.currentRoomChat.collectAsState()
     val currentRoomParticipants by viewModel.currentRoomParticipants.collectAsState()
     val activeFloatingGifts by viewModel.activeFloatingGifts.collectAsState()
@@ -42,6 +48,42 @@ fun LiveRoomScreen(
     val isVideoMuted by viewModel.isVideoMuted.collectAsState()
     val userCoinBalance by viewModel.userCoinBalance.collectAsState()
     val currentUserProfile by viewModel.currentUserProfile.collectAsState()
+
+    var pendingPermissionCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        pendingPermissionCallback?.invoke()
+        pendingPermissionCallback = null
+    }
+
+    val safeToggleMic: () -> Unit = {
+        if (isMicMuted) {
+            val hasMic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            if (hasMic) {
+                viewModel.toggleMic()
+            } else {
+                pendingPermissionCallback = { viewModel.toggleMic() }
+                permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+            }
+        } else {
+            viewModel.toggleMic()
+        }
+    }
+
+    val safeToggleVideo: () -> Unit = {
+        if (isVideoMuted) {
+            val hasCam = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            if (hasCam) {
+                viewModel.toggleVideo()
+            } else {
+                pendingPermissionCallback = { viewModel.toggleVideo() }
+                permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+            }
+        } else {
+            viewModel.toggleVideo()
+        }
+    }
 
     // Dialog states
     val showGiftDialog by viewModel.showGiftDialog.collectAsState()
@@ -184,8 +226,8 @@ fun LiveRoomScreen(
                     isMicMuted = isMicMuted,
                     isVideoMuted = isVideoMuted,
                     onFlipCamera = { viewModel.flipCamera() },
-                    onToggleMic = { viewModel.toggleMic() },
-                    onToggleVideo = { viewModel.toggleVideo() },
+                    onToggleMic = safeToggleMic,
+                    onToggleVideo = safeToggleVideo,
                     onOpenFilters = { viewModel.setShowFilterSheet(true) },
                     onOpenSoundboard = { viewModel.setShowSoundboard(true) },
                     onOpenStats = { viewModel.setShowStreamStats(true) },

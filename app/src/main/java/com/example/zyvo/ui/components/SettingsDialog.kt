@@ -28,7 +28,8 @@ fun SettingsDialog(
     blockedUsers: List<UserProfile>,
     onDismiss: () -> Unit,
     onSaveProfile: (displayName: String, bio: String, gender: String, location: String, avatarEmoji: String) -> Unit,
-    onUnblockUser: (userId: String) -> Unit
+    onUnblockUser: (userId: String) -> Unit,
+    onLogout: (() -> Unit)? = null
 ) {
     var activeTab by remember { mutableStateOf(0) } // 0: Edit Profile, 1: Preferences, 2: Blocked Users, 3: About
 
@@ -243,6 +244,23 @@ fun SettingsDialog(
                             Text(text = "Real-time Live Streaming, PK Battle Arena, Multi-Guest Video, Audio Stage, & Social Wallet Platform.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(text = "Privacy Policy • Terms of Service • License", fontSize = 11.sp, color = TextMuted)
+                            
+                            if (onLogout != null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedButton(
+                                    onClick = {
+                                        onDismiss()
+                                        onLogout()
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkCardElevated),
+                                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(LiveRed, ElectricMagenta)))
+                                ) {
+                                    Icon(Icons.Default.Logout, contentDescription = "Log Out", tint = LiveRed, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Sign Out / Logout Account", color = LiveRed, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+                            }
                         }
                     }
                 }

@@ -81,6 +81,11 @@ fun ZyvoApp(
 
     var activeSubView by remember { mutableStateOf<String?>(null) } // "wallet", "vip_center", "rankings"
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.initPersistence(context.applicationContext)
+    }
+
     val followingProfiles = remember(userProfiles, followingUserIds) {
         userProfiles.values.filter { followingUserIds.contains(it.userId) }
     }
@@ -93,6 +98,9 @@ fun ZyvoApp(
         LoginScreen(
             onLoginSuccess = { name, email, avatar, photoUrl ->
                 viewModel.loginWithGoogle(name, email, avatar, photoUrl)
+            },
+            onCreateCustomProfile = { name, username, email, avatar, photoUrl, bio, gender, location ->
+                viewModel.createCustomProfileAndLogin(name, username, email, avatar, photoUrl, bio, gender, location)
             }
         )
     } else {
@@ -279,7 +287,8 @@ fun ZyvoApp(
                     onSaveProfile = { name, bio, gender, loc, avatar ->
                         viewModel.updateProfile(name, bio, gender, loc, avatar)
                     },
-                    onUnblockUser = { userId -> viewModel.unblockUser(userId) }
+                    onUnblockUser = { userId -> viewModel.unblockUser(userId) },
+                    onLogout = { viewModel.logout() }
                 )
             }
 
