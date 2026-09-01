@@ -1,7 +1,7 @@
 package com.example.zyvo.ui.screens
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,32 +13,54 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.zyvo.R
 import com.example.zyvo.model.LiveRoom
 import com.example.zyvo.model.RoomType
 import com.example.zyvo.model.UserProfile
-import com.example.zyvo.model.VipTier
-import com.example.zyvo.ui.components.ExecutiveAvatar
-import com.example.zyvo.ui.components.ExecutiveGrandBanner
-import com.example.zyvo.ui.components.openWhatsAppChat
 import com.example.zyvo.ui.theme.*
+
+// Data Models for Home Page Reference Content
+data class TopHostItem(
+    val id: String,
+    val name: String,
+    val isVerified: Boolean = true,
+    val category: String,
+    val viewerCount: String,
+    val imageUrl: String,
+    val roomType: RoomType = RoomType.SINGLE_LIVE
+)
+
+data class PopularHostItem(
+    val id: String,
+    val name: String,
+    val popularity: String,
+    val imageUrl: String,
+    val isGoldCrown: Boolean = true,
+    val hasRose: Boolean = false
+)
 
 @Composable
 fun HomeScreen(
@@ -56,622 +78,197 @@ fun HomeScreen(
     onOpenAnalyticsClick: () -> Unit,
     onOpenUserDetail: ((String) -> Unit)? = null
 ) {
-    var selectedTopTab by remember { mutableStateOf(1) } // 0: Following, 1: Popular, 2: PK, 3: Audio, 4: New
+    // Reference Data items matching the design source of truth
+    val topLiveHosts = remember {
+        listOf(
+            TopHostItem(
+                id = "nusrat_jahan",
+                name = "Nusrat Jahan",
+                category = "❤️ Let's Talk",
+                viewerCount = "12.5K",
+                imageUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80"
+            ),
+            TopHostItem(
+                id = "maisha",
+                name = "Maisha",
+                category = "🌊 Good Vibes ✨",
+                viewerCount = "8.7K",
+                imageUrl = "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80"
+            ),
+            TopHostItem(
+                id = "ayesha_live",
+                name = "Ayesha Live",
+                category = "🎵 Music Live",
+                viewerCount = "9.2K",
+                imageUrl = "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80"
+            ),
+            TopHostItem(
+                id = "cute_angel",
+                name = "Cute Angel",
+                category = "⭐ Happy Time",
+                viewerCount = "7.1K",
+                imageUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=80"
+            )
+        )
+    }
+
+    val popularHosts = remember {
+        listOf(
+            PopularHostItem(
+                id = "king_of_kings",
+                name = "King Of King's",
+                popularity = "127.5M",
+                imageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80",
+                isGoldCrown = true
+            ),
+            PopularHostItem(
+                id = "drama_queen",
+                name = "Drama Queen",
+                popularity = "98.7M",
+                imageUrl = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=80",
+                isGoldCrown = true
+            ),
+            PopularHostItem(
+                id = "jannatul_islam",
+                name = "Jannatul Islam",
+                popularity = "75.2M",
+                imageUrl = "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&auto=format&fit=crop&q=80",
+                isGoldCrown = true
+            ),
+            PopularHostItem(
+                id = "husnat_smita",
+                name = "Husnat Smita",
+                popularity = "64.1M",
+                imageUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&auto=format&fit=crop&q=80",
+                isGoldCrown = false
+            ),
+            PopularHostItem(
+                id = "send_rose",
+                name = "Send Rose",
+                popularity = "58.3M",
+                imageUrl = "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=500&auto=format&fit=crop&q=80",
+                isGoldCrown = true,
+                hasRose = true
+            )
+        )
+    }
 
     Scaffold(
-        containerColor = DarkBackground
+        containerColor = Color(0xFF090712) // Deep space black/navy
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 14.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 1. TOP HEADER
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-                // Top App Bar with Zyvo Brand & Search icon
-                HomeTopBar(
-                    coinBalance = coinBalance,
+                Spacer(modifier = Modifier.height(6.dp))
+                HomeTopHeader(
                     onOpenAnalytics = onOpenAnalyticsClick
                 )
             }
 
-            // Top Category Nav Tabs (Yeah! Live UI Kit Pill Style)
+            // 2. HERO PROMOTIONAL BANNER
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                HeroPromoBanner(onGoLiveClick = onGoLiveClick)
+            }
+
+            // 3. QUICK ACCESS HORIZONTAL CARD
+            item {
+                QuickAccessCard(
+                    selectedCategory = selectedCategory,
+                    onSelectCategory = onSelectCategory
+                )
+            }
+
+            // 4. TOP LIVE SECTION
+            item {
+                SectionHeader(
+                    icon = "🔥",
+                    title = "Top Live",
+                    onViewAllClick = { onSelectCategory(null) }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        val categoryTabs = listOf("Following", "🔥 For You", "⚔️ PK Arena", "🎙️ Audio", "👥 Multi-Seat", "🎮 Gaming")
-                        items(categoryTabs.size) { index ->
-                            val title = categoryTabs[index]
-                            val isSelected = selectedTopTab == index
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(
-                                        if (isSelected) {
-                                            Brush.horizontalGradient(listOf(ElectricMagenta, NeonPurple))
-                                        } else {
-                                            Brush.linearGradient(listOf(DarkSurface, DarkSurface))
-                                        }
-                                    )
-                                    .border(
-                                        1.dp,
-                                        if (isSelected) GoldAccent.copy(alpha = 0.6f) else OverlayLight,
-                                        RoundedCornerShape(20.dp)
-                                    )
-                                    .clickable {
-                                        selectedTopTab = index
-                                        when (index) {
-                                            0 -> onSelectCategory(null)
-                                            1 -> onSelectCategory(null)
-                                            2 -> onSelectCategory(RoomType.PK_BATTLE)
-                                            3 -> onSelectCategory(RoomType.AUDIO_STAGE)
-                                            4 -> onSelectCategory(RoomType.MULTI_GUEST)
-                                            5 -> onSelectCategory(RoomType.SINGLE_LIVE)
-                                        }
-                                    }
-                                    .padding(horizontal = 14.dp, vertical = 7.dp)
-                            ) {
-                                Text(
-                                    text = title,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
-                                    color = if (isSelected) TextPrimary else TextSecondary
-                                )
+                    // Show reference items first or dynamic active rooms
+                    items(topLiveHosts) { hostItem ->
+                        TopLiveCard(
+                            item = hostItem,
+                            onClick = {
+                                val matchRoom = rooms.firstOrNull()
+                                if (matchRoom != null) {
+                                    onRoomClick(matchRoom)
+                                } else {
+                                    onGoLiveClick()
+                                }
                             }
-                        }
+                        )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(DarkSurface)
-                            .border(1.dp, OverlayLight, CircleShape)
-                            .clickable { /* expand search */ },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(18.dp)
+                    // Dynamically append any active user rooms
+                    items(rooms) { room ->
+                        DynamicRoomCard(
+                            room = room,
+                            onClick = { onRoomClick(room) }
                         )
                     }
                 }
             }
 
-            // Hero Promo Banner (Exact visual style of reference layout)
+            // 5. POPULAR HOSTS SECTION
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(130.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Color(0xFF8A003D), Color(0xFF4A0033), Color(0xFF260538))
-                            )
-                        )
-                        .border(1.5.dp, GoldAccent.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                        .clickable { onGoLiveClick() }
-                        .padding(16.dp)
+                SectionHeader(
+                    icon = "👑",
+                    title = "Popular Hosts",
+                    onViewAllClick = { onOpenAnalyticsClick() }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(GoldAccent)
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text("OFFICIAL CONTEST", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.Black)
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "BE A STAR - BE ON TOP",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Black,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "Stream now to win 500,000 Coins & SVIP 3 status",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = GoldAccent
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .size(54.dp)
-                                .clip(CircleShape)
-                                .background(GoldAccent.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("👑", fontSize = 32.sp)
-                        }
-                    }
-                }
-            }
-
-            // Popular Hosts Avatar Row
-            item {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Hall of Fame & Popular Hosts",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("👑", fontSize = 16.sp)
-                        }
-
-                        Text(
-                            text = "View all >",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted,
-                            modifier = Modifier.clickable { onOpenAnalyticsClick() }
+                    items(popularHosts) { host ->
+                        PopularHostCrownItem(
+                            host = host,
+                            onOpenUserDetail = onOpenUserDetail
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // CEO Rayan Mirza (Rank #1)
-                        item {
-                            val context = LocalContext.current
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.clickable { onOpenUserDetail?.invoke("ceo_rayan") }
-                            ) {
-                                ExecutiveAvatar(
-                                    avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
-                                    avatarEmoji = "👑",
-                                    size = 58.dp,
-                                    userLevel = 99,
-                                    vipTier = VipTier.VIP_9,
-                                    showCrown = true,
-                                    showLevelBadge = true
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "RAYAN MIRZA",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = GoldAccent,
-                                    maxLines = 1
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = "★ 99.9M",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = GoldAccent
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .size(18.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF25D366))
-                                            .clickable {
-                                                openWhatsAppChat(context, "+44 7868 713315", "RAYAN MIRZA")
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("💬", fontSize = 9.sp)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Co-Founder Alpha Rajpoot (Rank #2)
-                        item {
-                            val context = LocalContext.current
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.clickable { onOpenUserDetail?.invoke("co_founder_alpha") }
-                            ) {
-                                ExecutiveAvatar(
-                                    avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
-                                    avatarEmoji = "🦁",
-                                    size = 58.dp,
-                                    userLevel = 99,
-                                    vipTier = VipTier.VIP_9,
-                                    showCrown = true,
-                                    showLevelBadge = true
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "ALPHA RAJPOOT",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = NeonCyan,
-                                    maxLines = 1
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = "★ 88.8M",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = GoldAccent
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .size(18.dp)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF25D366))
-                                            .clickable {
-                                                openWhatsAppChat(context, "+447366 387620", "ALPHA RAJPOOT")
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("💬", fontSize = 9.sp)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Top Host Queen: Ansharah Gahni (Rank #3 / SVIP 7)
-                        item {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.clickable { onOpenUserDetail?.invoke("ansharah_gahni") }
-                            ) {
-                                ExecutiveAvatar(
-                                    avatarUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
-                                    avatarEmoji = "👸",
-                                    size = 58.dp,
-                                    userLevel = 89,
-                                    vipTier = VipTier.SVIP_7,
-                                    showCrown = true,
-                                    showLevelBadge = true
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "ANSHARAH GAHNI",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = Color(0xFFFF00AA),
-                                    maxLines = 1
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = "★ 78.5M",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = GoldAccent
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(Color(0xFFFF007A))
-                                            .padding(horizontal = 4.dp, vertical = 1.dp)
-                                    ) {
-                                        Text(
-                                            text = "SVIP 7",
-                                            fontSize = 8.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = Color.White
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        val popularHosts = listOf(
-                            Triple("Elena 'PixelQueen'", "🎮", "69.0M"),
-                            Triple("Apex Arenas", "⚔️", "52.0M"),
-                            Triple("Kai Sterling", "🎧", "28.4M"),
-                            Triple("Marcus Vance", "☕", "14.5M")
-                        )
-
-                        items(popularHosts) { (name, emoji, score) ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .background(DarkSurface)
-                                        .border(1.5.dp, GoldAccent.copy(alpha = 0.5f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = emoji, fontSize = 26.sp)
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = name,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = "★ $score",
-                                    fontSize = 9.sp,
-                                    color = GoldAccent
-                                )
-                            }
-                        }
-                    }
                 }
             }
 
-            // 2-Column Live Streams Section Header
+            // 6. VIP PROMOTION BANNER
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "Popular Broadcasts",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
-                            color = TextPrimary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(DarkSurface)
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "${rooms.size} Live",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
-                                color = NeonCyan
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "Refresh 🔄",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextMuted,
-                        modifier = Modifier.clickable { /* refresh */ }
-                    )
-                }
+                VipUpgradeBanner(onUpgradeClick = onOpenAnalyticsClick)
             }
 
-            // 2-Column Yeah! Live Double Grid
-            if (rooms.isNotEmpty()) {
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        rooms.chunked(2).forEach { rowRooms ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                rowRooms.forEach { room ->
-                                    val isExecutive = room.creatorIdentity == "ceo_rayan" || room.creatorIdentity == "co_founder_alpha"
-                                    val context = LocalContext.current
-                                    val coverPic = room.roomCoverUrl ?: room.hostAvatarUrl
-
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .height(210.dp)
-                                            .clip(RoundedCornerShape(18.dp))
-                                            .background(DarkSurface)
-                                            .border(
-                                                width = if (isExecutive) 1.5.dp else 1.dp,
-                                                brush = if (isExecutive) Brush.horizontalGradient(listOf(GoldAccent, ElectricMagenta)) else Brush.linearGradient(listOf(OverlayLight, Color.Transparent)),
-                                                shape = RoundedCornerShape(18.dp)
-                                            )
-                                            .clickable { onRoomClick(room) }
-                                    ) {
-                                        // Background Cover Image or Gradient
-                                        if (!coverPic.isNullOrBlank()) {
-                                            AsyncImage(
-                                                model = ImageRequest.Builder(context)
-                                                    .data(coverPic)
-                                                    .crossfade(true)
-                                                    .build(),
-                                                contentDescription = room.hostName,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-                                        } else {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .background(
-                                                        Brush.verticalGradient(
-                                                            listOf(
-                                                                if (isExecutive) Color(0xFF4A0A40) else Color(0xFF281144),
-                                                                DarkSurface
-                                                            )
-                                                        )
-                                                    ),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(text = room.hostAvatar, fontSize = 52.sp)
-                                            }
-                                        }
-
-                                        // Dark Scrim Gradient
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(
-                                                    Brush.verticalGradient(
-                                                        listOf(
-                                                            Color(0x77000000),
-                                                            Color.Transparent,
-                                                            Color(0xEE080611)
-                                                        )
-                                                    )
-                                                )
-                                        )
-
-                                        // Top Badges (Live Status & Viewer Counter)
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(8.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            // Live Badge
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(
-                                                        if (room.roomType == RoomType.PK_BATTLE) PkRed
-                                                        else if (isExecutive) GoldAccent
-                                                        else LiveRed
-                                                    )
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            ) {
-                                                Text(
-                                                    text = if (isExecutive) "👑 VIP" else if (room.roomType == RoomType.PK_BATTLE) "⚔️ PK" else "🔴 LIVE",
-                                                    fontSize = 8.sp,
-                                                    fontWeight = FontWeight.Black,
-                                                    color = if (isExecutive) Color.Black else Color.White
-                                                )
-                                            }
-
-                                            // Viewers Pill
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(12.dp))
-                                                    .background(Color(0x88000000))
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            ) {
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    Text(text = "👁️", fontSize = 8.sp)
-                                                    Spacer(modifier = Modifier.width(3.dp))
-                                                    Text(
-                                                        text = "${room.viewerCount}",
-                                                        fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color.White
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        // Bottom Card Info (Avatar, Name, Title, Equalizer)
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .align(Alignment.BottomStart)
-                                                .padding(8.dp)
-                                        ) {
-                                            Text(
-                                                text = room.title,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-
-                                            Spacer(modifier = Modifier.height(4.dp))
-
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    if (!room.hostAvatarUrl.isNullOrBlank()) {
-                                                        AsyncImage(
-                                                            model = ImageRequest.Builder(context)
-                                                                .data(room.hostAvatarUrl)
-                                                                .crossfade(true)
-                                                                .build(),
-                                                            contentDescription = room.hostName,
-                                                            contentScale = ContentScale.Crop,
-                                                            modifier = Modifier
-                                                                .size(20.dp)
-                                                                .clip(CircleShape)
-                                                                .border(1.dp, GoldAccent, CircleShape)
-                                                        )
-                                                    } else {
-                                                        Text(text = room.hostAvatar, fontSize = 12.sp)
-                                                    }
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text(
-                                                        text = room.hostName,
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color = if (isExecutive) GoldAccent else TextSecondary,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
-                                                    )
-                                                }
-
-                                                // Category Tag
-                                                Text(
-                                                    text = "#${room.category}",
-                                                    fontSize = 9.sp,
-                                                    color = NeonCyan,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (rowRooms.size == 1) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
+            // 7. FEATURE CARDS GRID (2x2)
             item {
-                Spacer(modifier = Modifier.height(72.dp))
+                FeatureCardsGrid(
+                    onSelectCategory = onSelectCategory,
+                    onGoLiveClick = onGoLiveClick,
+                    onOpenAnalyticsClick = onOpenAnalyticsClick
+                )
+            }
+
+            // Bottom Spacing for Fixed Navigation Bar
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
     }
 }
 
+// --------------------------------------------------------------------------------
+// 1. TOP HEADER COMPOSABLE
+// --------------------------------------------------------------------------------
 @Composable
-fun HomeTopBar(
-    coinBalance: Int,
+fun HomeTopHeader(
     onOpenAnalytics: () -> Unit
 ) {
     Row(
@@ -679,255 +276,1103 @@ fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Zyvo Brand Logo
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        Brush.linearGradient(
-                            listOf(NeonPurple, ElectricMagenta)
-                        )
+        // ZYVO Logo & Tagline
+        Column {
+            Text(
+                text = "ZYVO",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                style = TextStyle(
+                    brush = Brush.horizontalGradient(
+                        listOf(Color(0xFFFF007A), Color(0xFF9D4EDD), Color(0xFF00F0FF))
                     )
-                    .border(1.dp, GoldAccent.copy(alpha = 0.5f), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_zyvo_logo),
-                    contentDescription = "Zyvo Live Logo",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
-                Text(
-                    text = "Zyvo Live",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "Realtime WebRTC Studio",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = NeonCyan
-                )
-            }
+                ),
+                letterSpacing = 1.sp
+            )
+            Text(
+                text = "WATCH • CONNECT • SHINE",
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.85f),
+                letterSpacing = 1.5.sp
+            )
         }
 
-        // Right Actions: Coins Pill & Analytics Button
+        // Top-Right Action Icons (Search, Trophy, Notifications with badge)
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Coin Pill
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(DarkSurface)
-                    .border(1.dp, GoldAccent.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "🪙", fontSize = 12.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "$coinBalance",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = GoldAccent
-                    )
-                }
-            }
-
-            // Studio Analytics Button
-            IconButton(
-                onClick = onOpenAnalytics,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
-                    .testTag("home_analytics_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Analytics,
-                    contentDescription = "Studio Analytics",
-                    tint = NeonPurpleLight
-                )
-            }
+            HeaderCircleIconButton(
+                icon = Icons.Default.Search,
+                contentDescription = "Search",
+                onClick = { }
+            )
+            HeaderCircleIconButton(
+                icon = Icons.Default.EmojiEvents,
+                contentDescription = "Leaderboard",
+                onClick = onOpenAnalytics
+            )
+            HeaderCircleIconButton(
+                icon = Icons.Default.Notifications,
+                contentDescription = "Notifications",
+                hasBadge = true,
+                onClick = { }
+            )
         }
     }
 }
 
 @Composable
-fun CategoryChipsRow(
-    selectedCategory: RoomType?,
-    onSelectCategory: (RoomType?) -> Unit
-) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // "All" chip
-        item {
-            val isSelected = selectedCategory == null
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (isSelected) NeonPurple else DarkSurface)
-                    .border(
-                        1.dp,
-                        if (isSelected) NeonCyan else OverlayLight,
-                        RoundedCornerShape(14.dp)
-                    )
-                    .clickable { onSelectCategory(null) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = "✨ Explore All",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) TextPrimary else TextSecondary
-                )
-            }
-        }
-
-        items(RoomType.entries.toTypedArray()) { type ->
-            val isSelected = selectedCategory == type
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (isSelected) NeonPurple else DarkSurface)
-                    .border(
-                        1.dp,
-                        if (isSelected) NeonCyan else OverlayLight,
-                        RoundedCornerShape(14.dp)
-                    )
-                    .clickable { onSelectCategory(type) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = type.icon, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = type.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSelected) TextPrimary else TextSecondary
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FeaturedStreamBanner(
-    room: LiveRoom,
+fun HeaderCircleIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    hasBadge: Boolean = false,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(Color(0xFF19142A))
+            .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = Color.White,
+            modifier = Modifier.size(20.dp)
+        )
+        if (hasBadge) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = (-2).dp, y = 2.dp)
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFF007A))
+                    .border(1.5.dp, Color(0xFF19142A), CircleShape)
+            )
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------
+// 2. HERO PROMOTIONAL BANNER COMPOSABLE
+// --------------------------------------------------------------------------------
+@Composable
+fun HeroPromoBanner(onGoLiveClick: () -> Unit) {
+    Box(
+        modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp)
+            .height(160.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(
-                Brush.linearGradient(
+                Brush.horizontalGradient(
                     listOf(
-                        Color(0xFF381463),
-                        Color(0xFF1E0A38),
-                        DarkBackground
+                        Color(0xFF260538),
+                        Color(0xFF4C0E56),
+                        Color(0xFF1C0738)
                     )
                 )
             )
-            .border(1.5.dp, NeonPurple.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-            .clickable { onClick() }
-            .padding(16.dp)
+            .border(
+                width = 1.dp,
+                brush = Brush.horizontalGradient(
+                    listOf(Color(0xFFFF00AA).copy(alpha = 0.5f), Color(0xFF00F0FF).copy(alpha = 0.3f))
+                ),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .clickable { onGoLiveClick() }
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Live Pulse Badge
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(LiveRed)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(TextPrimary)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "FEATURED ${room.roomType.badge}",
-                        color = TextPrimary,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
+        // Starry night ambient canvas background
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                color = Color(0xFFFF00AA).copy(alpha = 0.15f),
+                radius = size.width * 0.3f,
+                center = Offset(size.width * 0.2f, size.height * 0.5f)
+            )
+            drawCircle(
+                color = Color(0xFFFFD700).copy(alpha = 0.15f),
+                radius = size.width * 0.3f,
+                center = Offset(size.width * 0.85f, size.height * 0.5f)
+            )
+        }
 
-                // Viewer Count
-                Row(
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Mascot Graphic: Cartoon Mascot Cat holding pink camera
+            MascotGraphic(modifier = Modifier.size(95.dp))
+
+            // Center Text & CTA Button
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "BE A STAR",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    letterSpacing = 0.5.sp
+                )
+                Text(
+                    text = "BE ON TOP",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Show your talent, get noticed\nand win amazing rewards!",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFFD4C7FF),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 11.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(OverlayBackground)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .clip(CircleShape)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFFFF007A), Color(0xFF8A00D4))
+                            )
+                        )
+                        .padding(horizontal = 18.dp, vertical = 5.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Visibility,
-                        contentDescription = "Viewers",
-                        tint = NeonCyan,
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${room.viewerCount} watching",
-                        color = TextPrimary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = "JOIN NOW",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
                     )
                 }
             }
 
-            Column {
+            // Right Crown Trophy Visual with Golden Wings
+            CrownTrophyGraphic(modifier = Modifier.size(90.dp))
+        }
+
+        // Carousel Indicator Dots at bottom center
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(16.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFF007A))
+            )
+            repeat(3) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.35f))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MascotGraphic(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        // Glowing aura behind mascot
+        Box(
+            modifier = Modifier
+                .size(75.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Color(0xFFFF00AA).copy(alpha = 0.4f), Color.Transparent)
+                    )
+                )
+        )
+        // Cute cartoon mascot composite
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "🐱", fontSize = 42.sp)
+            Box(
+                modifier = Modifier
+                    .offset(y = (-8).dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFFFF007A), Color(0xFF9D4EDD))
+                        )
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "LIVE",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CrownTrophyGraphic(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        // Golden radiance aura
+        Box(
+            modifier = Modifier
+                .size(75.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(Color(0xFFFFD700).copy(alpha = 0.35f), Color.Transparent)
+                    )
+                )
+        )
+        // Golden Crown & Wings Composite
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "👑", fontSize = 44.sp)
+            Text(
+                text = "🏆",
+                fontSize = 24.sp,
+                modifier = Modifier.offset(y = (-14).dp)
+            )
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------
+// 3. QUICK ACCESS HORIZONTAL CARD
+// --------------------------------------------------------------------------------
+@Composable
+fun QuickAccessCard(
+    selectedCategory: RoomType?,
+    onSelectCategory: (RoomType?) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF161224))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+            .padding(vertical = 12.dp, horizontal = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            QuickAccessItem(
+                icon = Icons.Default.Videocam,
+                iconBgGradient = listOf(Color(0xFFFF007A), Color(0xFFFF529A)),
+                label = "Top Live",
+                isSelected = selectedCategory == null,
+                onClick = { onSelectCategory(null) }
+            )
+            QuickAccessItem(
+                icon = Icons.Default.Call,
+                iconBgGradient = listOf(Color(0xFF7209B7), Color(0xFFB5179E)),
+                label = "PK Battle",
+                isSelected = selectedCategory == RoomType.PK_BATTLE,
+                onClick = { onSelectCategory(RoomType.PK_BATTLE) }
+            )
+            QuickAccessItem(
+                icon = Icons.Default.Mic,
+                iconBgGradient = listOf(Color(0xFF3A0CA3), Color(0xFF480CA8)),
+                label = "Audio Live",
+                isSelected = selectedCategory == RoomType.AUDIO_STAGE,
+                onClick = { onSelectCategory(RoomType.AUDIO_STAGE) }
+            )
+            QuickAccessItem(
+                icon = Icons.Default.Star,
+                iconBgGradient = listOf(Color(0xFF4361EE), Color(0xFF4CC9F0)),
+                label = "New",
+                isSelected = selectedCategory == RoomType.MULTI_GUEST,
+                onClick = { onSelectCategory(RoomType.MULTI_GUEST) }
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickAccessItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconBgGradient: List<Color>,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Brush.linearGradient(iconBgGradient))
+                .border(
+                    width = if (isSelected) 1.5.dp else 0.dp,
+                    color = Color.White,
+                    shape = RoundedCornerShape(12.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) Color.White else Color(0xFFB0ACC0)
+        )
+    }
+}
+
+// --------------------------------------------------------------------------------
+// SECTION HEADER COMPOSABLE
+// --------------------------------------------------------------------------------
+@Composable
+fun SectionHeader(
+    icon: String,
+    title: String,
+    onViewAllClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = icon, fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable { onViewAllClick() }
+        ) {
+            Text(
+                text = "View all",
+                fontSize = 12.sp,
+                color = Color(0xFFA09BAC),
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = Color(0xFFA09BAC),
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------
+// 4. TOP LIVE HOST CARDS
+// --------------------------------------------------------------------------------
+@Composable
+fun TopLiveCard(
+    item: TopHostItem,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .width(135.dp)
+            .clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(175.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFF1B162B))
+        ) {
+            // High quality portrait image
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(item.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = item.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Scrim gradient
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0x66000000),
+                                Color.Transparent,
+                                Color(0xDD090712)
+                            )
+                        )
+                    )
+            )
+
+            // LIVE Pill Badge (Top Left)
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFFFF007A))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .align(Alignment.TopStart)
+            ) {
                 Text(
-                    text = room.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "LIVE",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
+            }
+
+            // Viewers Pill Overlay (Bottom Left on image)
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x99000000))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .align(Alignment.BottomStart)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = item.viewerCount,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Host Name + Verified Checkmark
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = item.name,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Verified",
+                tint = Color(0xFF00F0FF),
+                modifier = Modifier.size(12.dp)
+            )
+        }
+
+        // Category Tag
+        Text(
+            text = item.category,
+            fontSize = 10.sp,
+            color = Color(0xFFB0ACC0),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+fun DynamicRoomCard(
+    room: LiveRoom,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val coverPic = room.roomCoverUrl ?: room.hostAvatarUrl
+    Column(
+        modifier = Modifier
+            .width(135.dp)
+            .clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(175.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFF1B162B))
+        ) {
+            if (!coverPic.isNullOrEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(coverPic)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = room.hostName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(listOf(Color(0xFF381463), Color(0xFF120524)))
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = room.hostAvatar, fontSize = 38.sp)
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(listOf(Color(0x66000000), Color.Transparent, Color(0xDD090712)))
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFFFF007A))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .align(Alignment.TopStart)
+            ) {
+                Text(text = "LIVE", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.White)
+            }
+
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x99000000))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .align(Alignment.BottomStart)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Visibility, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(text = "${room.viewerCount}", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = room.hostName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(modifier = Modifier.width(3.dp))
+            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF00F0FF), modifier = Modifier.size(12.dp))
+        }
+        Text(text = "#${room.category}", fontSize = 10.sp, color = Color(0xFFB0ACC0), maxLines = 1)
+    }
+}
+
+// --------------------------------------------------------------------------------
+// 5. POPULAR HOSTS CROWN AVATARS
+// --------------------------------------------------------------------------------
+@Composable
+fun PopularHostCrownItem(
+    host: PopularHostItem,
+    onOpenUserDetail: ((String) -> Unit)?
+) {
+    val context = LocalContext.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(82.dp)
+            .clickable { onOpenUserDetail?.invoke(host.id) }
+    ) {
+        Box(
+            modifier = Modifier.size(80.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            // Crown Frame Visual
+            CrownFrameHeader(
+                isGold = host.isGoldCrown,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-6).dp)
+                    .zIndex(2f)
+            )
+
+            // Circular Host Avatar
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(host.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = host.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .border(
+                        width = 2.dp,
+                        brush = Brush.linearGradient(
+                            if (host.isGoldCrown) listOf(Color(0xFFFFD700), Color(0xFFFFA500))
+                            else listOf(Color(0xFFE0E0E0), Color(0xFF9E9E9E))
+                        ),
+                        shape = CircleShape
+                    )
+            )
+
+            // Rose Badge overlay if requested
+            if (host.hasRose) {
+                Text(
+                    text = "🌹",
+                    fontSize = 14.sp,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = (-4).dp, y = (-12).dp)
+                )
+            }
+
+            // Popularity Pill Badge Overlay at bottom
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = 4.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFF4361EE), Color(0xFF7209B7))
+                        )
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(9.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = host.popularity,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = host.name,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun CrownFrameHeader(isGold: Boolean, modifier: Modifier = Modifier) {
+    Text(
+        text = if (isGold) "👑" else "👑",
+        fontSize = 20.sp,
+        modifier = modifier
+    )
+}
+
+// --------------------------------------------------------------------------------
+// 6. VIP PROMOTION BANNER
+// --------------------------------------------------------------------------------
+@Composable
+fun VipUpgradeBanner(onUpgradeClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFF22073A),
+                        Color(0xFF420E64),
+                        Color(0xFF1C0630)
+                    )
+                )
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.horizontalGradient(
+                    listOf(Color(0xFFFF00AA).copy(alpha = 0.5f), Color(0xFFFFD700).copy(alpha = 0.5f))
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable { onUpgradeClick() }
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // VIP 7 Shield Emblem Visual
+            VipShield7Emblem(modifier = Modifier.size(46.dp))
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Text Info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Upgrade to VIP",
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = Color.White
+                )
+                Text(
+                    text = "Enjoy exclusive perks and rewards",
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.7f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = room.hostAvatar, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = room.hostName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = NeonPurpleLight,
-                        fontWeight = FontWeight.SemiBold
+            }
+
+            // Upgrade Now Pill Button
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFFFF007A), Color(0xFF9D4EDD))
+                        )
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 7.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "• ${room.category}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
+                        text = "Upgrade Now",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun VipShield7Emblem(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        // Gold Shield Icon representation
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(10.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFFFFD700), Color(0xFFFFA500), Color(0xFFFF8C00))
+                    )
+                )
+                .border(1.dp, Color.White, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "7",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF4A0E00)
+                )
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------
+// 7. FEATURE CARDS GRID (2x2 GRID)
+// --------------------------------------------------------------------------------
+enum class FeatureVisualType {
+    PK_BATTLE, GO_LIVE, TOP_GIFTING, DAILY_TASK
+}
+
+@Composable
+fun FeatureCardsGrid(
+    onSelectCategory: (RoomType?) -> Unit,
+    onGoLiveClick: () -> Unit,
+    onOpenAnalyticsClick: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Row 1: PK Battle & Go Live
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FeatureCard(
+                modifier = Modifier.weight(1f),
+                title = "PK Battle",
+                subtitle = "Live Competition",
+                buttonText = "Join Now",
+                cardGradient = listOf(Color(0xFF1E0A38), Color(0xFF3C0E5A)),
+                buttonGradient = listOf(Color(0xFF4361EE), Color(0xFF3A0CA3)),
+                visualType = FeatureVisualType.PK_BATTLE,
+                onClick = { onSelectCategory(RoomType.PK_BATTLE) }
+            )
+
+            FeatureCard(
+                modifier = Modifier.weight(1f),
+                title = "Go Live",
+                subtitle = "Share your talent",
+                buttonText = "Start Live",
+                cardGradient = listOf(Color(0xFF2E083D), Color(0xFF5A0C6B)),
+                buttonGradient = listOf(Color(0xFF7209B7), Color(0xFFFF007A)),
+                visualType = FeatureVisualType.GO_LIVE,
+                onClick = onGoLiveClick
+            )
+        }
+
+        // Row 2: Top Gifting & Daily Task
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FeatureCard(
+                modifier = Modifier.weight(1f),
+                title = "Top Gifting",
+                subtitle = "Support your favorite",
+                buttonText = "Send Gift",
+                cardGradient = listOf(Color(0xFF2A0930), Color(0xFF4A0A48)),
+                buttonGradient = listOf(Color(0xFFFF007A), Color(0xFF7209B7)),
+                visualType = FeatureVisualType.TOP_GIFTING,
+                onClick = onOpenAnalyticsClick
+            )
+
+            FeatureCard(
+                modifier = Modifier.weight(1f),
+                title = "Daily Task",
+                subtitle = "Complete & Earn",
+                buttonText = "Check Now",
+                cardGradient = listOf(Color(0xFF1F083B), Color(0xFF3E0F66)),
+                buttonGradient = listOf(Color(0xFF7209B7), Color(0xFF4361EE)),
+                visualType = FeatureVisualType.DAILY_TASK,
+                onClick = onOpenAnalyticsClick
+            )
+        }
+    }
+}
+
+@Composable
+fun FeatureCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    buttonText: String,
+    cardGradient: List<Color>,
+    buttonGradient: List<Color>,
+    visualType: FeatureVisualType,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .height(115.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Brush.linearGradient(cardGradient))
+            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(18.dp))
+            .clickable { onClick() }
+            .padding(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left Text & Button Column
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = title,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        fontSize = 9.sp,
+                        color = Color.White.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Brush.horizontalGradient(buttonGradient))
+                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = buttonText,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                }
+            }
+
+            // Right Visual Graphic according to feature card type
+            Box(
+                modifier = Modifier
+                    .size(60.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                when (visualType) {
+                    FeatureVisualType.PK_BATTLE -> PkBattleVisualGraphic()
+                    FeatureVisualType.GO_LIVE -> GoLiveVisualGraphic()
+                    FeatureVisualType.TOP_GIFTING -> TopGiftingVisualGraphic()
+                    FeatureVisualType.DAILY_TASK -> DailyTaskVisualGraphic()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PkBattleVisualGraphic() {
+    Box(contentAlignment = Alignment.Center) {
+        Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
+            Text("👩🏻", fontSize = 28.sp)
+            Text("👩🏽", fontSize = 28.sp)
+        }
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Color(0xFFFF007A))
+                .padding(horizontal = 4.dp, vertical = 1.dp)
+        ) {
+            Text("VS", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.White)
+        }
+    }
+}
+
+@Composable
+fun GoLiveVisualGraphic() {
+    Box(contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFFFF007A), Color(0xFF7209B7))
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Videocam,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun TopGiftingVisualGraphic() {
+    Box(contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("🎁", fontSize = 32.sp)
+            Text("💕", fontSize = 10.sp, modifier = Modifier.offset(y = (-6).dp))
+        }
+    }
+}
+
+@Composable
+fun DailyTaskVisualGraphic() {
+    Box(contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("📋", fontSize = 30.sp)
+            Text("🪙", fontSize = 12.sp, modifier = Modifier.offset(y = (-6).dp))
         }
     }
 }
@@ -950,7 +1395,6 @@ fun LiveRoomCard(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Host Avatar Tile with Live Ring
             Box(
                 modifier = Modifier
                     .size(60.dp)
@@ -964,7 +1408,6 @@ fun LiveRoomCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Details
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -978,7 +1421,6 @@ fun LiveRoomCard(
                         color = TextPrimary
                     )
 
-                    // Mode Badge
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
@@ -1014,7 +1456,6 @@ fun LiveRoomCard(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Stats: Viewers, Likes, Tags
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1060,33 +1501,6 @@ fun LiveRoomCard(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun EmptyRoomsState() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 40.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "📡", fontSize = 42.sp)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "No streams match your filter",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Try another category or start your own live stream studio!",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextMuted
-            )
         }
     }
 }

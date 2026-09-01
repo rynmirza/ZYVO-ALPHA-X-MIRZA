@@ -327,13 +327,13 @@ fun ZyvoBottomBar(
     )
 
     Surface(
-        color = DarkSurface.copy(alpha = 0.95f),
+        color = Color(0xFF0C0A17).copy(alpha = 0.96f),
         tonalElevation = 16.dp,
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(listOf(OverlayLight, Color.Transparent)),
+                brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.Transparent)),
                 shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
             )
             .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
@@ -343,27 +343,27 @@ fun ZyvoBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Tab 0: Explore / Home
+            // Tab 0: Home
             BottomNavItem(
-                icon = Icons.Default.Explore,
-                label = "Explore",
+                icon = Icons.Default.Home,
+                label = "Home",
                 isSelected = selectedTab == 0,
                 onClick = { onSelectTab(0) }
             )
 
-            // Tab 1: Live / Following
+            // Tab 1: Live
             BottomNavItem(
-                icon = Icons.Default.LiveTv,
+                icon = Icons.Default.Videocam,
                 label = "Live",
                 isSelected = selectedTab == 1,
                 onClick = { onSelectTab(1) }
             )
 
-            // Center: Signature Yeah! Live Elevated Glowing "Go Live" Button
+            // Center: Signature Elevated Glowing "Go Live" Button
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -377,7 +377,7 @@ fun ZyvoBottomBar(
                         .clip(CircleShape)
                         .background(
                             Brush.radialGradient(
-                                listOf(ElectricMagenta.copy(alpha = 0.5f), Color.Transparent)
+                                listOf(Color(0xFFFF007A).copy(alpha = 0.6f), Color.Transparent)
                             )
                         )
                 )
@@ -389,35 +389,35 @@ fun ZyvoBottomBar(
                         .clip(CircleShape)
                         .background(
                             Brush.linearGradient(
-                                listOf(ElectricMagenta, NeonPurple, CyberBlue)
+                                listOf(Color(0xFFFF007A), Color(0xFF7209B7), Color(0xFF4CC9F0))
                             )
                         )
-                        .border(2.dp, Brush.linearGradient(listOf(GoldAccent, Color.White)), CircleShape)
+                        .border(2.dp, Brush.linearGradient(listOf(Color(0xFFFFD700), Color.White)), CircleShape)
                         .clickable { onGoLiveClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = Icons.Default.Videocam,
                         contentDescription = "Go Live",
                         tint = Color.White,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
 
-            // Tab 3: Messages / Chat
+            // Tab 3: Chat
             BottomNavItem(
-                icon = Icons.Default.Forum,
-                label = "Messages",
+                icon = Icons.Default.Chat,
+                label = "Chat",
                 isSelected = selectedTab == 3,
                 onClick = { onSelectTab(3) },
-                hasBadge = true
+                badgeText = "12"
             )
 
-            // Tab 4: Profile / Me
+            // Tab 4: Profile
             BottomNavItem(
                 icon = Icons.Default.Person,
-                label = "Me",
+                label = "Profile",
                 isSelected = selectedTab == 4,
                 onClick = { onSelectTab(4) }
             )
@@ -431,39 +431,47 @@ private fun BottomNavItem(
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
-    hasBadge: Boolean = false
+    badgeText: String? = null
 ) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) ElectricMagenta else TextMuted,
+                tint = if (isSelected) Color(0xFFFF007A) else Color(0xFF8E8A9F),
                 modifier = Modifier.size(24.dp)
             )
-            if (hasBadge) {
+            if (!badgeText.isNullOrEmpty()) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .size(7.dp)
+                        .offset(x = 6.dp, y = (-4).dp)
                         .clip(CircleShape)
-                        .background(ElectricMagenta)
-                        .border(1.dp, DarkSurface, CircleShape)
-                )
+                        .background(Color(0xFFFF007A))
+                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = badgeText,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
             fontSize = 10.sp,
-            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-            color = if (isSelected) TextPrimary else TextMuted
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) Color(0xFFFF007A) else Color(0xFF8E8A9F)
         )
     }
 }
