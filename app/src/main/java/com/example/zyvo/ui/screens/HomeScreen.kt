@@ -1,6 +1,7 @@
 package com.example.zyvo.ui.screens
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,12 +23,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.zyvo.R
 import com.example.zyvo.model.LiveRoom
 import com.example.zyvo.model.RoomType
 import com.example.zyvo.model.UserProfile
@@ -133,19 +136,6 @@ fun HomeScreen(
                             .clickable { /* expand search */ }
                     )
                 }
-            }
-
-            // High Impact CEO Rayan Mirza & Co-Founder Alpha Rajpoot Grand Showcase Banner
-            item {
-                ExecutiveGrandBanner(
-                    ceoProfile = ceoProfile,
-                    coFounderProfile = coFounderProfile,
-                    onOpenProfile = { userId -> onOpenUserDetail?.invoke(userId) },
-                    onOpenLiveRoom = { roomId ->
-                        val room = rooms.find { it.id == roomId }
-                        if (room != null) onRoomClick(room)
-                    }
-                )
             }
 
             // Hero Promo Banner (Exact visual style of reference layout)
@@ -584,16 +574,22 @@ fun HomeTopBar(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(40.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(
                         Brush.linearGradient(
                             listOf(NeonPurple, ElectricMagenta)
                         )
-                    ),
+                    )
+                    .border(1.dp, GoldAccent.copy(alpha = 0.5f), RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "⚡", fontSize = 20.sp)
+                Image(
+                    painter = painterResource(id = R.drawable.ic_zyvo_logo),
+                    contentDescription = "Zyvo Live Logo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
             Spacer(modifier = Modifier.width(10.dp))
             Column {

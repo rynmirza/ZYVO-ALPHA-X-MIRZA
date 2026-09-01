@@ -36,89 +36,141 @@ fun BroadcasterToolbar(
     onOpenSoundboard: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenParticipants: () -> Unit,
+    onOpenRoomCover: () -> Unit = {},
     onRaiseHand: () -> Unit,
-    isHandRaised: Boolean = false
+    isHandRaised: Boolean = false,
+    onShare: () -> Unit = {}
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(OverlayBackground)
-            .border(1.dp, OverlayLight, RoundedCornerShape(20.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Mic Toggle
-        ToolbarIconButton(
-            icon = if (isMicMuted) Icons.Default.MicOff else Icons.Default.Mic,
-            label = if (isMicMuted) "Muted" else "Mic",
-            tint = if (isMicMuted) PkRed else TextPrimary,
-            onClick = onToggleMic,
-            testTag = "toolbar_mic_button"
-        )
-
-        // Video Toggle
-        ToolbarIconButton(
-            icon = if (isVideoMuted) Icons.Default.VideocamOff else Icons.Default.Videocam,
-            label = if (isVideoMuted) "Cam Off" else "Camera",
-            tint = if (isVideoMuted) PkRed else TextPrimary,
-            onClick = onToggleVideo,
-            testTag = "toolbar_video_button"
-        )
-
-        // Flip Camera (if host)
-        ToolbarIconButton(
-            icon = Icons.Default.FlipCameraAndroid,
-            label = "Flip",
-            tint = NeonCyan,
-            onClick = onFlipCamera,
-            testTag = "toolbar_flip_button"
-        )
-
-        // Beautify Filters
-        ToolbarIconButton(
-            icon = Icons.Default.AutoFixHigh,
-            label = "Filters",
-            tint = NeonPurpleLight,
-            onClick = onOpenFilters,
-            testTag = "toolbar_filter_button"
-        )
-
-        // Soundboard SFX
-        ToolbarIconButton(
-            icon = Icons.Default.GraphicEq,
-            label = "SFX",
-            tint = GoldAccent,
-            onClick = onOpenSoundboard,
-            testTag = "toolbar_sfx_button"
-        )
-
-        // Participants / Mod Sheet
-        ToolbarIconButton(
-            icon = Icons.Default.People,
-            label = "Users",
-            tint = TextPrimary,
-            onClick = onOpenParticipants,
-            testTag = "toolbar_users_button"
-        )
-
-        // Hand Raise (if viewer) or Stream Telemetry Stats
-        if (!isHost) {
+    if (isHost) {
+        // HOST ONLY BROADCAST CONTROLS
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(OverlayBackground)
+                .border(1.dp, OverlayLight, RoundedCornerShape(20.dp))
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Room Cover & Profile Pic Studio
             ToolbarIconButton(
-                icon = Icons.Default.PanTool,
-                label = if (isHandRaised) "Raised" else "Stage",
-                tint = if (isHandRaised) GoldAccent else TextPrimary,
-                onClick = onRaiseHand,
-                testTag = "toolbar_hand_raise_button"
+                icon = Icons.Default.Wallpaper,
+                label = "Cover/Pic",
+                tint = ElectricMagenta,
+                onClick = onOpenRoomCover,
+                testTag = "toolbar_cover_button"
             )
-        } else {
+
+            // Mic Toggle
+            ToolbarIconButton(
+                icon = if (isMicMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                label = if (isMicMuted) "Muted" else "Mic",
+                tint = if (isMicMuted) PkRed else TextPrimary,
+                onClick = onToggleMic,
+                testTag = "toolbar_mic_button"
+            )
+
+            // Video Toggle
+            ToolbarIconButton(
+                icon = if (isVideoMuted) Icons.Default.VideocamOff else Icons.Default.Videocam,
+                label = if (isVideoMuted) "Cam Off" else "Camera",
+                tint = if (isVideoMuted) PkRed else TextPrimary,
+                onClick = onToggleVideo,
+                testTag = "toolbar_video_button"
+            )
+
+            // Flip Camera
+            ToolbarIconButton(
+                icon = Icons.Default.FlipCameraAndroid,
+                label = "Flip",
+                tint = NeonCyan,
+                onClick = onFlipCamera,
+                testTag = "toolbar_flip_button"
+            )
+
+            // Beautify Filters
+            ToolbarIconButton(
+                icon = Icons.Default.AutoFixHigh,
+                label = "Filters",
+                tint = NeonPurpleLight,
+                onClick = onOpenFilters,
+                testTag = "toolbar_filter_button"
+            )
+
+            // Soundboard SFX
+            ToolbarIconButton(
+                icon = Icons.Default.GraphicEq,
+                label = "SFX",
+                tint = GoldAccent,
+                onClick = onOpenSoundboard,
+                testTag = "toolbar_sfx_button"
+            )
+
+            // Manage Viewers & Moderation
+            ToolbarIconButton(
+                icon = Icons.Default.People,
+                label = "Manage",
+                tint = TextPrimary,
+                onClick = onOpenParticipants,
+                testTag = "toolbar_users_button"
+            )
+
+            // Host Telemetry & Stats
             ToolbarIconButton(
                 icon = Icons.Default.BarChart,
                 label = "Stats",
                 tint = EmeraldGreen,
                 onClick = onOpenStats,
                 testTag = "toolbar_stats_button"
+            )
+        }
+    } else {
+        // VIEWER ONLY TOOLBAR (Zero Host Controls)
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(OverlayBackground)
+                .border(1.dp, OverlayLight, RoundedCornerShape(20.dp))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Viewers list
+            ToolbarIconButton(
+                icon = Icons.Default.People,
+                label = "Viewers",
+                tint = TextPrimary,
+                onClick = onOpenParticipants,
+                testTag = "viewer_toolbar_users_button"
+            )
+
+            // Room Cover View / Details
+            ToolbarIconButton(
+                icon = Icons.Default.Wallpaper,
+                label = "Cover",
+                tint = ElectricMagenta,
+                onClick = onOpenRoomCover,
+                testTag = "viewer_toolbar_cover_button"
+            )
+
+            // Request Stage / Raise Hand
+            ToolbarIconButton(
+                icon = Icons.Default.PanTool,
+                label = if (isHandRaised) "Raised" else "Guest Mic",
+                tint = if (isHandRaised) GoldAccent else TextPrimary,
+                onClick = onRaiseHand,
+                testTag = "viewer_toolbar_hand_button"
+            )
+
+            // Share Stream
+            ToolbarIconButton(
+                icon = Icons.Default.Share,
+                label = "Share",
+                tint = NeonCyan,
+                onClick = onShare,
+                testTag = "viewer_toolbar_share_button"
             )
         }
     }

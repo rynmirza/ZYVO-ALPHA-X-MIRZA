@@ -15,10 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.zyvo.model.*
 import com.example.zyvo.ui.components.*
 import com.example.zyvo.ui.theme.*
@@ -37,6 +41,7 @@ fun LiveRoomScreen(
     val isMicMuted by viewModel.isMicMuted.collectAsState()
     val isVideoMuted by viewModel.isVideoMuted.collectAsState()
     val userCoinBalance by viewModel.userCoinBalance.collectAsState()
+    val currentUserProfile by viewModel.currentUserProfile.collectAsState()
 
     // Dialog states
     val showGiftDialog by viewModel.showGiftDialog.collectAsState()
@@ -44,6 +49,7 @@ fun LiveRoomScreen(
     val showFilterSheet by viewModel.showFilterSheet.collectAsState()
     val showSoundboard by viewModel.showSoundboard.collectAsState()
     val showStreamStats by viewModel.showStreamStats.collectAsState()
+    val showRoomCoverSheet by viewModel.showRoomCoverSheet.collectAsState()
 
     val isHost = room.creatorIdentity == viewModel.currentUserIdentity
     val currentUserParticipant = currentRoomParticipants.find { it.identity == viewModel.currentUserIdentity }
@@ -68,7 +74,8 @@ fun LiveRoomScreen(
                     isHost = isHost,
                     onLeave = onLeaveRoom,
                     onOpenParticipants = { viewModel.setShowParticipantsSheet(true) },
-                    onOpenHostProfile = { viewModel.openUserProfile(room.creatorIdentity) }
+                    onOpenHostProfile = { viewModel.openUserProfile(room.creatorIdentity) },
+                    onOpenRoomCover = { viewModel.setShowRoomCoverSheet(true) }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -87,6 +94,9 @@ fun LiveRoomScreen(
                                     .padding(horizontal = 8.dp),
                                 hostName = room.hostName,
                                 avatarEmoji = room.hostAvatar,
+                                avatarUrl = room.hostAvatarUrl,
+                                roomCoverUrl = room.roomCoverUrl,
+                                coverStyle = room.coverStyle,
                                 isSpeaking = true,
                                 filter = currentFilter,
                                 badgeText = "🔴 LIVE BROADCAST",
@@ -99,6 +109,8 @@ fun LiveRoomScreen(
                                 seats = room.seats,
                                 hostName = room.hostName,
                                 hostAvatar = room.hostAvatar,
+                                hostAvatarUrl = room.hostAvatarUrl,
+                                hostCoverUrl = room.roomCoverUrl,
                                 filter = currentFilter,
                                 onSeatClick = { seat ->
                                     if (!seat.occupied && !seat.locked) {
@@ -131,6 +143,8 @@ fun LiveRoomScreen(
                                 pkState = room.pkState,
                                 hostName = room.hostName,
                                 hostAvatar = room.hostAvatar,
+                                hostAvatarUrl = room.hostAvatarUrl,
+                                hostCoverUrl = room.roomCoverUrl,
                                 filter = currentFilter
                             )
                         }
@@ -140,6 +154,8 @@ fun LiveRoomScreen(
                                 teamState = room.teamState,
                                 hostName = room.hostName,
                                 hostAvatar = room.hostAvatar,
+                                hostAvatarUrl = room.hostAvatarUrl,
+                                hostCoverUrl = room.roomCoverUrl,
                                 filter = currentFilter
                             )
                         }
@@ -174,6 +190,7 @@ fun LiveRoomScreen(
                     onOpenSoundboard = { viewModel.setShowSoundboard(true) },
                     onOpenStats = { viewModel.setShowStreamStats(true) },
                     onOpenParticipants = { viewModel.setShowParticipantsSheet(true) },
+                    onOpenRoomCover = { viewModel.setShowRoomCoverSheet(true) },
                     onRaiseHand = {
                         if (isHandRaised) viewModel.cancelRequestToPresent()
                         else viewModel.requestToPresent()
@@ -183,6 +200,20 @@ fun LiveRoomScreen(
             }
 
             // Bottom Sheets
+            if (showRoomCoverSheet) {
+                RoomCoverManagerDialog(
+                    room = room,
+                    currentUserProfile = currentUserProfile,
+                    onDismiss = { viewModel.setShowRoomCoverSheet(false) },
+                    onApplyRoomCover = { coverUrl, style ->
+                        viewModel.updateRoomCover(room.id, coverUrl, style)
+                    },
+                    onUpdateBroadcasterProfilePic = { newPic ->
+                        viewModel.updateBroadcasterProfilePic(room.creatorIdentity, newPic)
+                    }
+                )
+            }
+
             if (showGiftDialog) {
                 GiftDialog(
                     userCoinBalance = userCoinBalance,
@@ -237,8 +268,12 @@ fun LiveRoomTopBar(
     isHost: Boolean,
     onLeave: () -> Unit,
     onOpenParticipants: () -> Unit,
-    onOpenHostProfile: () -> Unit = {}
+    onOpenHostProfile: () -> Unit = {},
+    onOpenRoomCover: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val hostPic = room.roomCoverUrl ?: room.hostAvatarUrl
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -246,39 +281,98 @@ fun LiveRoomTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Host Info Pill
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(DarkSurface.copy(alpha = 0.9f))
-                .border(1.dp, OverlayLight, RoundedCornerShape(24.dp))
-                .clickable { onOpenHostProfile() }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(NeonPurple),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = room.hostAvatar, fontSize = 16.sp)
+        // Host Info Pill or Broadcast Status Pill
+        if (isHost) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Brush.horizontalGradient(listOf(LiveRed.copy(alpha = 0.85f), ElectricMagenta.copy(alpha = 0.85f))))
+                    .border(1.dp, GoldAccent, RoundedCornerShape(24.dp))
+                    .clickable { onOpenRoomCover() }
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!hostPic.isNullOrBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(hostPic)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Broadcaster Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .border(1.dp, Color.White, CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = "LIVE STUDIO 📸",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        letterSpacing = 0.5.sp
+                    )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = room.hostName,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "${room.likesCount} ❤️",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = ElectricMagenta,
-                        fontSize = 10.sp
-                    )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(DarkSurface.copy(alpha = 0.9f))
+                    .border(1.dp, OverlayLight, RoundedCornerShape(24.dp))
+                    .clickable { onOpenHostProfile() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!hostPic.isNullOrBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(hostPic)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = room.hostName,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .border(1.dp, GoldAccent, CircleShape)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(NeonPurple),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = room.hostAvatar, fontSize = 16.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = room.hostName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "${room.likesCount} ❤️",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ElectricMagenta,
+                            fontSize = 10.sp
+                        )
+                    }
                 }
             }
         }
@@ -313,20 +407,39 @@ fun LiveRoomTopBar(
                 }
             }
 
-            // Close / Leave Stream Button
-            IconButton(
-                onClick = onLeave,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
-                    .testTag("leave_room_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Leave Stream",
-                    tint = TextPrimary
-                )
+            // Close / End / Leave Stream Button
+            if (isHost) {
+                Button(
+                    onClick = onLeave,
+                    colors = ButtonDefaults.buttonColors(containerColor = LiveRed),
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier
+                        .height(34.dp)
+                        .testTag("end_broadcast_button")
+                ) {
+                    Text(
+                        text = "End Live",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            } else {
+                IconButton(
+                    onClick = onLeave,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(DarkSurface)
+                        .testTag("leave_room_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Leave Stream",
+                        tint = TextPrimary
+                    )
+                }
             }
         }
     }
@@ -338,6 +451,8 @@ fun TeamBattleArena(
     teamState: TeamState,
     hostName: String,
     hostAvatar: String,
+    hostAvatarUrl: String? = null,
+    hostCoverUrl: String? = null,
     filter: BeautifyFilter = BeautifyFilter.ORIGINAL
 ) {
     Column(
@@ -401,6 +516,8 @@ fun TeamBattleArena(
                     .fillMaxHeight(),
                 hostName = hostName,
                 avatarEmoji = hostAvatar,
+                avatarUrl = hostAvatarUrl,
+                roomCoverUrl = hostCoverUrl,
                 isSpeaking = true,
                 badgeText = "MY SQUAD",
                 badgeColor = CyberBlue,
@@ -419,3 +536,4 @@ fun TeamBattleArena(
         }
     }
 }
+

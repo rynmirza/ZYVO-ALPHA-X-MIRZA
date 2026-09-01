@@ -90,8 +90,8 @@ fun ZyvoApp(
 
     if (!isLoggedIn) {
         LoginScreen(
-            onLoginSuccess = { name, email, avatar ->
-                viewModel.loginWithGoogle(name, email, avatar)
+            onLoginSuccess = { name, email, avatar, photoUrl ->
+                viewModel.loginWithGoogle(name, email, avatar, photoUrl)
             }
         )
     } else {

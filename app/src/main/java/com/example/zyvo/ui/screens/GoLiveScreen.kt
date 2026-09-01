@@ -1,5 +1,9 @@
 package com.example.zyvo.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,10 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.zyvo.model.RoomType
 import com.example.zyvo.ui.theme.*
 
@@ -32,6 +38,7 @@ fun GoLiveScreen(
     onDismiss: () -> Unit,
     onStartLive: (title: String, roomType: RoomType, category: String, tags: List<String>) -> Unit
 ) {
+    val context = LocalContext.current
     var titleText by remember { mutableStateOf("Let's have fun together ♥") }
     var selectedCategory by remember { mutableStateOf("Music") }
     var selectedRoomType by remember { mutableStateOf(RoomType.SINGLE_LIVE) }
@@ -41,6 +48,23 @@ fun GoLiveScreen(
 
     val categories = remember { listOf("Music", "Gaming", "Chitchat", "Dance", "Talent", "Esports") }
     var isCategoryMenuExpanded by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Proceed with live broadcast
+        onStartLive(titleText, selectedRoomType, selectedCategory, listOf(selectedCategory, "Live"))
+    }
+
+    val requestPermissionsAndStart: () -> Unit = {
+        val hasCamera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        val hasAudio = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (hasCamera && hasAudio) {
+            onStartLive(titleText, selectedRoomType, selectedCategory, listOf(selectedCategory, "Live"))
+        } else {
+            permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO))
+        }
+    }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -305,9 +329,7 @@ fun GoLiveScreen(
 
             // Start Live Gradient Button
             Button(
-                onClick = {
-                    onStartLive(titleText, selectedRoomType, selectedCategory, listOf(selectedCategory, "Live"))
-                },
+                onClick = requestPermissionsAndStart,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)

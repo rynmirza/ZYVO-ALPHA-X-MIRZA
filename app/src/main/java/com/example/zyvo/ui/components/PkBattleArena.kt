@@ -28,6 +28,9 @@ fun PkBattleArena(
     pkState: PkState,
     hostName: String,
     hostAvatar: String,
+    hostAvatarUrl: String? = null,
+    hostCoverUrl: String? = null,
+    targetHostAvatarUrl: String? = null,
     filter: BeautifyFilter = BeautifyFilter.ORIGINAL
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pk_pulse")
@@ -161,6 +164,8 @@ fun PkBattleArena(
                         .fillMaxHeight(),
                     hostName = hostName,
                     avatarEmoji = hostAvatar,
+                    avatarUrl = hostAvatarUrl,
+                    roomCoverUrl = hostCoverUrl,
                     isSpeaking = true,
                     filter = filter,
                     badgeText = "MY STREAM",
@@ -174,6 +179,7 @@ fun PkBattleArena(
                         .fillMaxHeight(),
                     hostName = pkState.targetHostName,
                     avatarEmoji = pkState.targetHostAvatar,
+                    avatarUrl = targetHostAvatarUrl,
                     isSpeaking = false,
                     badgeText = "RIVAL STREAM",
                     badgeColor = PkRed

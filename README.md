@@ -1,10 +1,9 @@
-![quickmeet-logo](assets/quick_meet_logo.png)
+![zyvo-logo](assets/zyvo_logo.jpg)
 
 
 -----
 
-# Realtime | OpenSource | WebRtc | Livekit 👋
-# Welcome to QuickMeet - Your Realtime virtual meeting platform🐥
+# ZYVO LIVE | Official Realtime Live Streaming Platform 👑
 
 
 ## 🔥🔥🔥 Latest News
@@ -242,4 +241,4 @@ _Also enable the `WATCH`👁 button to keep watching the updates on the reposito
 
 💯💻🧑‍💻👩‍💻 Happy Contributing 👩‍💻🧑‍💻💻💯
 
-![quickmeet-logo](assets/demo.png)
+![zyvo-logo](assets/zyvo_logo.jpg)

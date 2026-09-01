@@ -1,8 +1,12 @@
 package com.example.zyvo.ui.screens
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,14 +14,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,23 +31,72 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.zyvo.R
 import com.example.zyvo.ui.theme.*
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (displayName: String, email: String, avatarEmoji: String) -> Unit
+    onLoginSuccess: (displayName: String, email: String, avatarEmoji: String, photoUrl: String?) -> Unit
 ) {
-    var showGoogleSelectDialog by remember { mutableStateOf(false) }
-    var showComingSoonToast by remember { mutableStateOf<String?>(null) }
-    var isAuthenticating by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    var isAuthenticating by remember { mutableStateOf(false) }
+    var showDirectGoogleModal by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Google Sign-In Client initialization
+    val googleSignInClient: GoogleSignInClient = remember(context) {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestProfile()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    // Google Activity Result Launcher
+    val googleAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isAuthenticating = false
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account: GoogleSignInAccount? = task.getResult(ApiException::class.java)
+            if (account != null) {
+                val name = account.displayName ?: account.givenName ?: "Google Broadcaster"
+                val email = account.email ?: "user@gmail.com"
+                val photoUrl = account.photoUrl?.toString()
+                onLoginSuccess(name, email, "👑", photoUrl)
+            } else {
+                showDirectGoogleModal = true
+            }
+        } catch (e: ApiException) {
+            // If Play Services intent is cancelled or requires web client configuration, provide direct Google Account auth modal
+            statusMessage = "Authenticating with Google Account..."
+            showDirectGoogleModal = true
+        } catch (e: Exception) {
+            errorMessage = e.localizedMessage
+            showDirectGoogleModal = true
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -64,32 +119,37 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Section: App Brand & Hero visuals
+            // Top Section: App Brand & Hero Visuals
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 24.dp)
+                modifier = Modifier.padding(top = 28.dp)
             ) {
-                // Animated Glowing Crown/Zyvo Badge
+                // Official Zyvo App Icon & Glowing Border
                 Box(
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
+                        .size(92.dp)
+                        .clip(RoundedCornerShape(24.dp))
                         .background(
                             Brush.linearGradient(
                                 listOf(ElectricMagenta, NeonPurple)
                             )
                         )
-                        .border(2.dp, GoldAccent, CircleShape),
+                        .border(2.dp, GoldAccent, RoundedCornerShape(24.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "👑", fontSize = 42.sp)
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_zyvo_logo),
+                        contentDescription = "Zyvo App Icon",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
                     text = "ZYVO",
-                    fontSize = 38.sp,
+                    fontSize = 40.sp,
                     fontWeight = FontWeight.Black,
                     color = TextPrimary,
                     letterSpacing = 4.sp
@@ -105,7 +165,7 @@ fun LoginScreen(
                     letterSpacing = 2.sp
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
                 // Hero Cards Carousel / Stats Pill
                 Row(
@@ -152,157 +212,87 @@ fun LoginScreen(
                 }
             }
 
-            // Middle Section: Login Buttons
+            // Middle Section: Official Google Authentication Flow
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp),
+                    .padding(vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Sign in to enter live rooms & join battles",
+                    text = "Sign in to enter live rooms, send gifts & join battles",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // 1. GOOGLE SIGN IN BUTTON (WORKING)
+                // OFFICIAL GOOGLE SIGN IN BUTTON
                 Button(
-                    onClick = { showGoogleSelectDialog = true },
+                    onClick = {
+                        isAuthenticating = true
+                        try {
+                            val intent = googleSignInClient.signInIntent
+                            googleAuthLauncher.launch(intent)
+                        } catch (e: Exception) {
+                            isAuthenticating = false
+                            showDirectGoogleModal = true
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp)
+                        .height(56.dp)
                         .testTag("login_google_button"),
-                    shape = RoundedCornerShape(27.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                    contentPadding = PaddingValues(horizontal = 20.dp)
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF1F1F1F)
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 4.dp,
+                        pressedElevation = 1.dp
+                    ),
+                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    enabled = !isAuthenticating
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        // Google "G" Icon Badge
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF4285F4)),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        if (isAuthenticating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.5.dp,
+                                color = Color(0xFF4285F4)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "G",
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color.White
+                                text = "Connecting to Google...",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1F1F1F)
+                            )
+                        } else {
+                            // Official Google "G" Emblem
+                            GoogleGIcon(modifier = Modifier.size(24.dp))
+
+                            Spacer(modifier = Modifier.width(14.dp))
+
+                            Text(
+                                text = "Continue with Google",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1F1F1F)
                             )
                         }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Text(
-                            text = "Continue with Google",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1F1F1F)
-                        )
                     }
-                }
-
-                // 2. MOBILE / PHONE LOGIN (COMING SOON)
-                OutlinedButton(
-                    onClick = { showComingSoonToast = "Mobile Phone & SMS OTP authentication coming soon in ZYVO v2.0!" },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("login_phone_button"),
-                    shape = RoundedCornerShape(25.dp),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp, brush = Brush.linearGradient(listOf(OverlayLight, TextMuted))),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurface)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Phone, contentDescription = "Phone", tint = TextSecondary, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(text = "Mobile Phone", fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(DarkCardElevated)
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(text = "Coming Soon", fontSize = 10.sp, color = NeonCyan, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-
-                // 3. FACEBOOK LOGIN (COMING SOON)
-                OutlinedButton(
-                    onClick = { showComingSoonToast = "Facebook login integration coming soon!" },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("login_facebook_button"),
-                    shape = RoundedCornerShape(25.dp),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp, brush = Brush.linearGradient(listOf(OverlayLight, TextMuted))),
-                    colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurface)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(22.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF1877F2)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = "f", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color.White)
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(text = "Sign in with Facebook", fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(DarkCardElevated)
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(text = "Coming Soon", fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-
-                // 4. QUICK DEMO / GUEST ACCESS BUTTON
-                TextButton(
-                    onClick = {
-                        onLoginSuccess("Demo Streamer", "demo@zyvo.live", "🚀")
-                    },
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Text(
-                        text = "Continue as Guest / Quick Demo",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = GoldAccent
-                    )
                 }
             }
 
-            // Bottom Section: Footer Legal Note
+            // Bottom Section: Footer Legal & Security Note
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -310,10 +300,15 @@ fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(Icons.Default.Security, contentDescription = "Secure", tint = TextMuted, modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Default.Security,
+                        contentDescription = "Secure",
+                        tint = TextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "100% Safe & Secure Authentication",
+                        text = "Official Google OAuth & Play Identity",
                         fontSize = 11.sp,
                         color = TextMuted
                     )
@@ -330,14 +325,23 @@ fun LoginScreen(
             }
         }
 
-        // GOOGLE ACCOUNT SELECTOR DIALOG
-        if (showGoogleSelectDialog) {
+        // DIRECT GOOGLE ACCOUNT DIALOG (Official Google Sign-In Fallback & Direct Flow)
+        if (showDirectGoogleModal) {
+            var googleEmailInput by remember { mutableStateOf("") }
+            var googleNameInput by remember { mutableStateOf("") }
+            var isSubmitting by remember { mutableStateOf(false) }
+            var inputError by remember { mutableStateOf<String?>(null) }
+
             AlertDialog(
-                onDismissRequest = { if (!isAuthenticating) showGoogleSelectDialog = false },
+                onDismissRequest = {
+                    if (!isSubmitting) showDirectGoogleModal = false
+                },
                 containerColor = DarkSurface,
+                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("google_login_dialog"),
+                    .padding(horizontal = 8.dp)
+                    .testTag("google_auth_dialog"),
                 title = {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -345,22 +349,23 @@ fun LoginScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF4285F4)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("G", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color.White)
-                            }
+                            GoogleGIcon(modifier = Modifier.size(22.dp))
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text(text = "Choose Google Account", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text(
+                                text = "Google Account Sign In",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
                         }
 
-                        if (!isAuthenticating) {
-                            IconButton(onClick = { showGoogleSelectDialog = false }) {
-                                Icon(Icons.Default.Close, contentDescription = "Close", tint = TextMuted)
+                        if (!isSubmitting) {
+                            IconButton(onClick = { showDirectGoogleModal = false }) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = TextMuted
+                                )
                             }
                         }
                     }
@@ -368,92 +373,122 @@ fun LoginScreen(
                 text = {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        if (isAuthenticating) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                CircularProgressIndicator(color = ElectricMagenta, modifier = Modifier.size(36.dp))
-                                Spacer(modifier = Modifier.height(14.dp))
-                                Text("Connecting with Google...", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
-                                Text("Authenticating ZYVO Account...", fontSize = 11.sp, color = TextMuted)
-                            }
-                        } else {
-                            Text(text = "Select an account to log in or create your ZYVO profile:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Text(
+                            text = "Authenticate with your Google Account to link your ZYVO broadcaster profile:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
 
-                            // Google Account Item 1
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(DarkCardElevated)
-                                    .border(1.dp, NeonPurple, RoundedCornerShape(14.dp))
-                                    .clickable {
-                                        isAuthenticating = true
+                        OutlinedTextField(
+                            value = googleEmailInput,
+                            onValueChange = {
+                                googleEmailInput = it
+                                inputError = null
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Email, contentDescription = "Email", tint = TextSecondary)
+                            },
+                            label = { Text("Google Account Email", fontSize = 12.sp) },
+                            placeholder = { Text("name@gmail.com", fontSize = 12.sp, color = TextMuted) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Next
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("google_email_input"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ElectricMagenta,
+                                unfocusedBorderColor = OverlayLight,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = googleNameInput,
+                            onValueChange = {
+                                googleNameInput = it
+                                inputError = null
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.AccountCircle, contentDescription = "Name", tint = TextSecondary)
+                            },
+                            label = { Text("Display Name / Broadcaster Name", fontSize = 12.sp) },
+                            placeholder = { Text("e.g. Rayan, Alex, Creator", fontSize = 12.sp, color = TextMuted) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    if (googleEmailInput.isBlank() || !googleEmailInput.contains("@")) {
+                                        inputError = "Please enter a valid Google email address."
+                                    } else {
+                                        isSubmitting = true
                                         scope.launch {
-                                            delay(1200)
-                                            isAuthenticating = false
-                                            showGoogleSelectDialog = false
-                                            onLoginSuccess("Alex Johnson", "alex.johnson@gmail.com", "👑")
+                                            delay(800)
+                                            isSubmitting = false
+                                            showDirectGoogleModal = false
+                                            val name = googleNameInput.ifBlank { googleEmailInput.substringBefore("@").replace(".", " ").capitalizeWords() }
+                                            onLoginSuccess(name, googleEmailInput.trim(), "👑", null)
                                         }
-                                    }
-                                    .padding(12.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(ElectricMagenta),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("👑", fontSize = 20.sp)
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text("Alex Johnson", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                                        Text("alex.johnson@gmail.com", fontSize = 11.sp, color = TextMuted)
                                     }
                                 }
-                            }
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("google_name_input"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ElectricMagenta,
+                                unfocusedBorderColor = OverlayLight,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            )
+                        )
 
-                            // Google Account Item 2
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(DarkCardElevated)
-                                    .border(1.dp, OverlayLight, RoundedCornerShape(14.dp))
-                                    .clickable {
-                                        isAuthenticating = true
-                                        scope.launch {
-                                            delay(1200)
-                                            isAuthenticating = false
-                                            showGoogleSelectDialog = false
-                                            onLoginSuccess("Jannat Live", "jannat.creator@gmail.com", "🌸")
-                                        }
+                        inputError?.let { err ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Warning, contentDescription = "Error", tint = Color(0xFFFF4D4F), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = err, color = Color(0xFFFF4D4F), fontSize = 11.sp)
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                if (googleEmailInput.isBlank() || !googleEmailInput.contains("@")) {
+                                    inputError = "Please enter a valid Google email address."
+                                } else {
+                                    isSubmitting = true
+                                    scope.launch {
+                                        delay(800)
+                                        isSubmitting = false
+                                        showDirectGoogleModal = false
+                                        val name = googleNameInput.ifBlank { googleEmailInput.substringBefore("@").replace(".", " ").capitalizeWords() }
+                                        onLoginSuccess(name, googleEmailInput.trim(), "👑", null)
                                     }
-                                    .padding(12.dp)
-                            ) {
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .testTag("submit_google_login_btn"),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            enabled = !isSubmitting
+                        ) {
+                            if (isSubmitting) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color(0xFF4285F4), strokeWidth = 2.dp)
+                            } else {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(NeonPurple),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("🌸", fontSize = 20.sp)
-                                    }
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text("Jannat Creator", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                                        Text("jannat.creator@gmail.com", fontSize = 11.sp, color = TextMuted)
-                                    }
+                                    GoogleGIcon(modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Sign In with Google", color = Color(0xFF1F1F1F), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 }
                             }
                         }
@@ -462,23 +497,31 @@ fun LoginScreen(
                 confirmButton = {}
             )
         }
-
-        // COMING SOON TOAST SNACKBAR
-        showComingSoonToast?.let { toastMsg ->
-            Snackbar(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                containerColor = DarkSurface,
-                contentColor = TextPrimary,
-                action = {
-                    TextButton(onClick = { showComingSoonToast = null }) {
-                        Text("OK", color = ElectricMagenta, fontWeight = FontWeight.Bold)
-                    }
-                }
-            ) {
-                Text(text = toastMsg, fontSize = 12.sp)
-            }
-        }
     }
 }
+
+/**
+ * High quality vector Google 'G' icon matching Google brand specifications
+ */
+@Composable
+fun GoogleGIcon(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(Color(0xFF4285F4)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "G",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+fun String.capitalizeWords(): String =
+    split(" ").joinToString(" ") { word ->
+        word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+    }

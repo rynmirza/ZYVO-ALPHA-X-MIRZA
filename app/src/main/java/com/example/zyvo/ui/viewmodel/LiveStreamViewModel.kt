@@ -16,8 +16,8 @@ class LiveStreamViewModel(
     val currentUserName: String = repository.currentUserName
     val currentUserAvatar: String = repository.currentUserAvatar
 
-    fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String) {
-        repository.loginWithGoogle(displayName, email, avatarEmoji)
+    fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String, avatarUrl: String? = null) {
+        repository.loginWithGoogle(displayName, email, avatarEmoji, avatarUrl)
     }
 
     fun logout() {
@@ -93,6 +93,9 @@ class LiveStreamViewModel(
 
     private val _showCreateRoomSheet = MutableStateFlow(false)
     val showCreateRoomSheet: StateFlow<Boolean> = _showCreateRoomSheet.asStateFlow()
+
+    private val _showRoomCoverSheet = MutableStateFlow(false)
+    val showRoomCoverSheet: StateFlow<Boolean> = _showRoomCoverSheet.asStateFlow()
 
     // Filtered rooms
     val filteredRooms: StateFlow<List<LiveRoom>> = combine(
@@ -185,8 +188,17 @@ class LiveStreamViewModel(
         repository.reportUser(userId, reason)
     }
 
-    fun updateProfile(displayName: String, bio: String, gender: String, location: String, avatarEmoji: String) {
-        repository.updateProfile(displayName, bio, gender, location, avatarEmoji)
+    fun updateProfile(
+        displayName: String,
+        bio: String,
+        gender: String,
+        location: String,
+        avatarEmoji: String,
+        username: String? = null,
+        avatarUrl: String? = null,
+        coverGradientIndex: Int? = null
+    ) {
+        repository.updateProfile(displayName, bio, gender, location, avatarEmoji, username, avatarUrl, coverGradientIndex)
     }
 
     // Wallet & Membership
@@ -318,6 +330,14 @@ class LiveStreamViewModel(
     fun flipCamera() = repository.flipCamera()
     fun playSfx(sfx: String) = repository.playSfx(sfx)
 
+    fun updateRoomCover(roomId: String, coverUrl: String, coverStyle: String = "FULL_BACKDROP") {
+        repository.updateRoomCover(roomId, coverUrl, coverStyle)
+    }
+
+    fun updateBroadcasterProfilePic(userId: String, newAvatarUrl: String) {
+        repository.updateBroadcasterProfilePic(userId, newAvatarUrl)
+    }
+
     // Visibility Setters
     fun setShowVipStoreDialog(show: Boolean) { _showVipStoreDialog.value = show }
     fun setShowRechargeDialog(show: Boolean) { _showRechargeDialog.value = show }
@@ -330,4 +350,5 @@ class LiveStreamViewModel(
     fun setShowSoundboard(show: Boolean) { _showSoundboard.value = show }
     fun setShowStreamStats(show: Boolean) { _showStreamStats.value = show }
     fun setShowCreateRoomSheet(show: Boolean) { _showCreateRoomSheet.value = show }
+    fun setShowRoomCoverSheet(show: Boolean) { _showRoomCoverSheet.value = show }
 }

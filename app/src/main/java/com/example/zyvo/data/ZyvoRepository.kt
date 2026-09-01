@@ -21,16 +21,45 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
-    fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String) {
-        val username = email.substringBefore("@").replace(".", "_")
-        _currentUserProfile.update { current ->
-            current.copy(
-                displayName = displayName,
-                username = username,
-                avatarEmoji = avatarEmoji,
-                badges = listOf("Google User", "Verified Creator", "VIP 7")
-            )
+    fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String, avatarUrl: String? = null) {
+        val cleanUid = "user_google_" + UUID.randomUUID().toString().take(8)
+        val generatedUsername = email.substringBefore("@").replace(".", "_").lowercase()
+        
+        val newProfile = UserProfile(
+            userId = cleanUid,
+            username = generatedUsername,
+            displayName = displayName,
+            avatarEmoji = avatarEmoji,
+            avatarUrl = avatarUrl,
+            coverGradientIndex = 0,
+            bio = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
+            gender = "Unspecified",
+            location = "Global HQ 🌍",
+            userLevel = 1,
+            userXp = 0,
+            nextLevelXp = 1000,
+            wealthLevel = 1,
+            hostLevel = 1,
+            vipTier = VipTier.NONE,
+            vipExpiresTimestamp = 0L,
+            followersCount = 0,
+            followingCount = 3,
+            followingUserIds = listOf("ceo_rayan", "co_founder_alpha", "ansharah_gahni"),
+            likesCount = 0,
+            diamondsEarnedTotal = 0,
+            giftsReceivedTotal = 0,
+            liveStreamsCount = 0,
+            badges = listOf("Verified User"),
+            isLiveNow = false
+        )
+
+        _currentUserProfile.value = newProfile
+        _userProfiles.update { map ->
+            map + (cleanUid to newProfile)
         }
+        _followingUserIds.value = setOf("ceo_rayan", "co_founder_alpha", "ansharah_gahni")
+        _userCoinBalance.value = 500 // Welcome bonus coins
+        _userBeansBalance.value = 0
         _isLoggedIn.value = true
     }
 
@@ -42,27 +71,28 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
     private val _currentUserProfile = MutableStateFlow(
         UserProfile(
             userId = "user_me",
-            username = "alex_vance",
-            displayName = "Alex Vance",
+            username = "streamer",
+            displayName = "New Streamer",
             avatarEmoji = "🚀",
             coverGradientIndex = 0,
-            bio = "Official Zyvo Streamer & Gaming Enthusiast. Streaming Cyberpunk & Synthwave daily! ⚡",
-            gender = "Male",
-            location = "San Francisco, CA 🇺🇸",
-            userLevel = 14,
-            userXp = 3850,
-            nextLevelXp = 5000,
-            wealthLevel = 9,
-            hostLevel = 18,
-            vipTier = VipTier.VIP_3,
-            vipExpiresTimestamp = System.currentTimeMillis() + (30L * 24 * 3600 * 1000), // 30 days
-            followersCount = 1420,
-            followingCount = 28,
-            likesCount = 28900,
-            diamondsEarnedTotal = 34250,
-            giftsReceivedTotal = 480,
-            liveStreamsCount = 52,
-            badges = listOf("Verified Creator", "VIP 3", "Synth DJ", "PK Master"),
+            bio = "Official Zyvo Streamer ⚡",
+            gender = "Unspecified",
+            location = "Global HQ 🌍",
+            userLevel = 1,
+            userXp = 0,
+            nextLevelXp = 1000,
+            wealthLevel = 1,
+            hostLevel = 1,
+            vipTier = VipTier.NONE,
+            vipExpiresTimestamp = 0L,
+            followersCount = 0,
+            followingCount = 3,
+            followingUserIds = listOf("ceo_rayan", "co_founder_alpha", "ansharah_gahni"),
+            likesCount = 0,
+            diamondsEarnedTotal = 0,
+            giftsReceivedTotal = 0,
+            liveStreamsCount = 0,
+            badges = listOf("Verified User"),
             isLiveNow = false
         )
     )
@@ -73,10 +103,10 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
     val userProfiles: StateFlow<Map<String, UserProfile>> = _userProfiles.asStateFlow()
 
     // Wallet balances
-    private val _userCoinBalance = MutableStateFlow(15450)
+    private val _userCoinBalance = MutableStateFlow(500)
     val userCoinBalance: StateFlow<Int> = _userCoinBalance.asStateFlow()
 
-    private val _userBeansBalance = MutableStateFlow(34250) // 34,250 Beans = $342.50 USD
+    private val _userBeansBalance = MutableStateFlow(0)
     val userBeansBalance: StateFlow<Int> = _userBeansBalance.asStateFlow()
 
     // Transaction History
@@ -84,7 +114,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
     val walletTransactions: StateFlow<List<WalletTransaction>> = _walletTransactions.asStateFlow()
 
     // Following & Blocked User IDs
-    private val _followingUserIds = MutableStateFlow<Set<String>>(setOf("dj_kai", "pixel_queen", "marcus_voice"))
+    private val _followingUserIds = MutableStateFlow<Set<String>>(setOf("ceo_rayan", "co_founder_alpha", "ansharah_gahni"))
     val followingUserIds: StateFlow<Set<String>> = _followingUserIds.asStateFlow()
 
     private val _blockedUserIds = MutableStateFlow<Set<String>>(emptySet())
@@ -229,129 +259,6 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
                 isLiveNow = true,
                 currentRoomId = "room_ansharah_777",
                 isTopHost = true
-            ),
-            "dj_kai" to UserProfile(
-                userId = "dj_kai",
-                username = "kai_sterling",
-                displayName = "Kai Sterling",
-                avatarEmoji = "🎧",
-                coverGradientIndex = 1,
-                bio = "Electronic Synthwave DJ & Producer. Resident DJ on Zyvo Live! 🎶",
-                gender = "Male",
-                location = "Berlin, Germany 🇩🇪",
-                userLevel = 28,
-                wealthLevel = 19,
-                hostLevel = 32,
-                vipTier = VipTier.VIP_5,
-                followersCount = 18900,
-                followingCount = 142,
-                likesCount = 142000,
-                diamondsEarnedTotal = 284000,
-                badges = listOf("Top Broadcaster", "VIP 5", "Music Guru"),
-                isFollowedByCurrentUser = true,
-                isLiveNow = true,
-                currentRoomId = "room_single_101"
-            ),
-            "pixel_queen" to UserProfile(
-                userId = "pixel_queen",
-                username = "pixel_queen",
-                displayName = "Elena 'PixelQueen'",
-                avatarEmoji = "🎮",
-                coverGradientIndex = 2,
-                bio = "Pro FPS Gamer & Streamer. Host of the Daily Esports Stage 👾",
-                gender = "Female",
-                location = "Seoul, South Korea 🇰🇷",
-                userLevel = 35,
-                wealthLevel = 25,
-                hostLevel = 40,
-                vipTier = VipTier.SVIP_2,
-                followersCount = 42500,
-                followingCount = 89,
-                likesCount = 389000,
-                diamondsEarnedTotal = 690000,
-                badges = listOf("Super Broadcaster", "SVIP 2", "Esports Champion"),
-                isFollowedByCurrentUser = true,
-                isLiveNow = true,
-                currentRoomId = "room_multi_202"
-            ),
-            "marcus_voice" to UserProfile(
-                userId = "marcus_voice",
-                username = "marcus_vance",
-                displayName = "Marcus Vance",
-                avatarEmoji = "☕",
-                coverGradientIndex = 3,
-                bio = "Host of Midnight Coffee Audio Stage. Storyteller & Vocal Artist 🎙️",
-                gender = "Male",
-                location = "London, UK 🇬🇧",
-                userLevel = 22,
-                wealthLevel = 14,
-                hostLevel = 26,
-                vipTier = VipTier.VIP_2,
-                followersCount = 9800,
-                followingCount = 65,
-                likesCount = 76000,
-                diamondsEarnedTotal = 145000,
-                badges = listOf("Voice Artist", "VIP 2", "Coffee Host"),
-                isFollowedByCurrentUser = true,
-                isLiveNow = true,
-                currentRoomId = "room_audio_303"
-            ),
-            "apex_arenas" to UserProfile(
-                userId = "apex_arenas",
-                username = "apex_arenas",
-                displayName = "Apex Arenas",
-                avatarEmoji = "⚔️",
-                coverGradientIndex = 4,
-                bio = "Undefeated 1v1 PK Arena Broadcaster. Challenge me if you dare 💥",
-                gender = "Male",
-                location = "Austin, TX 🇺🇸",
-                userLevel = 31,
-                wealthLevel = 30,
-                hostLevel = 38,
-                vipTier = VipTier.SVIP_1,
-                followersCount = 31000,
-                followingCount = 110,
-                likesCount = 290000,
-                diamondsEarnedTotal = 520000,
-                badges = listOf("PK Legend", "SVIP 1", "War Titan"),
-                isFollowedByCurrentUser = false,
-                isLiveNow = true,
-                currentRoomId = "room_pk_404"
-            ),
-            "team_crimson" to UserProfile(
-                userId = "team_crimson",
-                username = "team_crimson",
-                displayName = "Team Crimson",
-                avatarEmoji = "🛡️",
-                coverGradientIndex = 0,
-                bio = "3v3 Team Battle Championship Stage. Squad up and battle! 🔥",
-                gender = "Group",
-                location = "Global Arena 🌍",
-                userLevel = 45,
-                wealthLevel = 42,
-                hostLevel = 50,
-                vipTier = VipTier.SVIP_3,
-                followersCount = 88000,
-                followingCount = 12,
-                likesCount = 950000,
-                diamondsEarnedTotal = 1850000,
-                badges = listOf("Hall of Fame", "SVIP 3", "Team Champion"),
-                isFollowedByCurrentUser = false,
-                isLiveNow = true,
-                currentRoomId = "room_team_505"
-            ),
-            "luna_star" to UserProfile(
-                userId = "luna_star",
-                username = "luna_star",
-                displayName = "Luna Star ✨",
-                avatarEmoji = "🌟",
-                bio = "Cosmic giver & top donor! Supporting creators worldwide 💖",
-                userLevel = 48,
-                wealthLevel = 55,
-                vipTier = VipTier.SVIP_3,
-                followersCount = 15400,
-                followingCount = 320,
-                likesCount = 120000
             )
         )
         _userProfiles.value = initialUsers
@@ -413,6 +320,8 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             hostName = "RAYAN MIRZA (CEO)",
             hostAvatar = "👑",
             hostAvatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+            roomCoverUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+            coverStyle = "FULL_BACKDROP",
             roomType = RoomType.SINGLE_LIVE,
             category = "Official",
             tags = listOf("CEO", "Official", "Summit", "VIP9", "Lv99"),
@@ -429,6 +338,8 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             hostName = "ALPHA RAJPOOT (CO-FOUNDER)",
             hostAvatar = "🦁",
             hostAvatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+            roomCoverUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+            coverStyle = "FULL_BACKDROP",
             roomType = RoomType.PK_BATTLE,
             category = "PK Arena",
             tags = listOf("CoFounder", "PK", "HighStakes", "VIP9", "Lv99"),
@@ -452,6 +363,8 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             hostName = "ANSHARAH GAHNI",
             hostAvatar = "👸",
             hostAvatarUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
+            roomCoverUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
+            coverStyle = "FULL_BACKDROP",
             roomType = RoomType.SINGLE_LIVE,
             category = "Top Host",
             tags = listOf("TopHost", "SVIP7", "Lv89", "Queen", "Official"),
@@ -460,116 +373,13 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             enableChat = true
         )
 
-        val singleRoom = LiveRoom(
-            id = "room_single_101",
-            title = "🔥 Cyberpunk Beats & Chill DJ Session",
-            description = "Live electronic synthwave set with real-time audio reactive visuals and community Q&A!",
-            creatorIdentity = "dj_kai",
-            hostName = "Kai Sterling",
-            hostAvatar = "🎧",
-            roomType = RoomType.SINGLE_LIVE,
-            category = "Music",
-            tags = listOf("Synthwave", "DJ", "Chill", "Electronic"),
-            viewerCount = 4280,
-            likesCount = 28400,
-            enableChat = true
-        )
-
-        val multiRoom = LiveRoom(
-            id = "room_multi_202",
-            title = "👥 Gaming Squad Watchparty & Community Stage",
-            description = "Top 5 streamers discussing the latest esports tournament. Open guest slots on stage!",
-            creatorIdentity = "pixel_queen",
-            hostName = "Elena 'PixelQueen'",
-            hostAvatar = "🎮",
-            roomType = RoomType.MULTI_GUEST,
-            category = "Gaming",
-            tags = listOf("Esports", "MultiGuest", "Gaming", "Talk"),
-            viewerCount = 3190,
-            likesCount = 19200,
-            seats = listOf(
-                Seat(id = 1, occupied = true, assignedParticipant = "pixel_queen", participantName = "Elena (Host)", avatarEmoji = "🎮", role = "HOST"),
-                Seat(id = 2, occupied = true, assignedParticipant = "ghost_rider", participantName = "GhostRider", avatarEmoji = "🏍️", role = "SPEAKER"),
-                Seat(id = 3, occupied = true, assignedParticipant = "neon_samurai", participantName = "NeonSamurai", avatarEmoji = "⚔️", role = "SPEAKER"),
-                Seat(id = 4, occupied = false, locked = false),
-                Seat(id = 5, occupied = false, locked = true)
-            )
-        )
-
-        val audioRoom = LiveRoom(
-            id = "room_audio_303",
-            title = "🎙️ Midnight Coffee: Deep Talks & Open Mic",
-            description = "Grab a cup of warm tea or coffee. Request a mic slot to share your stories or music!",
-            creatorIdentity = "marcus_voice",
-            hostName = "Marcus Vance",
-            hostAvatar = "☕",
-            roomType = RoomType.AUDIO_STAGE,
-            category = "Podcast",
-            tags = listOf("AudioOnly", "Chill", "Podcast", "OpenMic"),
-            viewerCount = 1850,
-            likesCount = 12400,
-            seats = listOf(
-                Seat(id = 1, occupied = true, assignedParticipant = "marcus_voice", participantName = "Marcus (Host)", avatarEmoji = "☕", role = "HOST"),
-                Seat(id = 2, occupied = true, assignedParticipant = "luna_voice", participantName = "Luna", avatarEmoji = "🌙", role = "SPEAKER"),
-                Seat(id = 3, occupied = true, assignedParticipant = "leo_jazz", participantName = "Leo Jazz", avatarEmoji = "🎷", role = "SPEAKER"),
-                Seat(id = 4, occupied = false, locked = false),
-                Seat(id = 5, occupied = false, locked = false),
-                Seat(id = 6, occupied = false, locked = false)
-            )
-        )
-
-        val pkRoom = LiveRoom(
-            id = "room_pk_404",
-            title = "⚔️ HIGH STAKES 1v1 PK BATTLE: Apex vs Shadow",
-            description = "1v1 Gift Battle Arena! Host sending legendary dragon combos to claim victory!",
-            creatorIdentity = "apex_arenas",
-            hostName = "Apex Arenas",
-            hostAvatar = "⚔️",
-            roomType = RoomType.PK_BATTLE,
-            category = "PK Arena",
-            tags = listOf("PK", "1v1", "Competition", "HighStakes"),
-            viewerCount = 6840,
-            likesCount = 59200,
-            pkState = PkState(
-                isActive = true,
-                targetHostName = "Shadow Knight",
-                targetHostAvatar = "🐺",
-                myScore = 14500,
-                targetScore = 12800,
-                remainingSeconds = 168
-            )
-        )
-
-        val teamRoom = LiveRoom(
-            id = "room_team_505",
-            title = "🛡️ 3v3 TEAM WAR CHAMPIONSHIP: Alpha vs Bravo",
-            description = "Squad up for the ultimate 3v3 team gift battle showdown!",
-            creatorIdentity = "team_crimson",
-            hostName = "Team Crimson",
-            hostAvatar = "🛡️",
-            roomType = RoomType.TEAM_MODE,
-            category = "Team Battle",
-            tags = listOf("TeamBattle", "3v3", "Tournament"),
-            viewerCount = 8920,
-            likesCount = 84000,
-            teamState = TeamState(
-                isActive = true,
-                teamName = "Team Alpha 🔴",
-                enemyTeamName = "Team Bravo 🔵",
-                myTeamScore = 48200,
-                enemyTeamScore = 41500,
-                myTeamMembers = listOf("user_me", "dj_kai", "marcus_voice"),
-                enemyTeamMembers = listOf("shadow_k", "vortex_v", "blaze_b")
-            )
-        )
-
-        _rooms.value = listOf(ceoRoom, alphaRoom, ansharahRoom, singleRoom, multiRoom, audioRoom, pkRoom, teamRoom)
+        _rooms.value = listOf(ceoRoom, alphaRoom, ansharahRoom)
 
         // Pre-fill initial chat messages
         _chatMessages.value = mapOf(
             "room_ceo_999" to listOf(
-                ChatMessage("c01", "system", "ZYVO HQ", senderAvatar = "👑", text = "👑 WELCOME TO CEO RAYAN MIRZA OFFICIAL KEYNOTE LIVE! VIP 9 ACTIVE.", type = MessageType.SYSTEM),
-                ChatMessage("c02", "vip_fan", "Lord_Vanguard", "💎", "Glory to CEO Rayan Mirza! Sent 50x Golden Dragons! 🐉"),
+                ChatMessage("c01", "system", "ZYVO HQ", senderAvatar = "👑", text = "👑 WELCOME TO CEO & FOUNDER RAYAN MIRZA OFFICIAL LIVE! VIP 9 SUPREME ACTIVE.", type = MessageType.SYSTEM),
+                ChatMessage("c02", "vip_fan", "Lord_Vanguard", "💎", "Glory to Founder Rayan Mirza! Sent 50x Golden Dragons! 🐉"),
                 ChatMessage("c03", "creator_1", "Mia_Vocal", "🎤", "Thank you for the creator fund upgrade! Zyvo is #1 🔥")
             ),
             "room_alpha_888" to listOf(
@@ -581,29 +391,23 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
                 ChatMessage("ca2", "ceo_rayan", "RAYAN MIRZA (CEO)", "👑", "Welcome Ansharah to the Top Host Spotlight! 💎 Sent 100,000 Diamonds!"),
                 ChatMessage("ca3", "co_founder_alpha", "ALPHA RAJPOOT", "🦁", "Keep shining Queen Ansharah! Top Host power! 🔥"),
                 ChatMessage("ca4", "vip_fan", "CrownPrince_99", "💎", "Sent 10x Galactic Dragon Palace to Queen Ansharah! 👸")
-            ),
-            "room_single_101" to listOf(
-                ChatMessage("c1", "system", "System", senderAvatar = "📢", text = "Welcome to Kai's Synthwave Live Room! 🎉", type = MessageType.SYSTEM),
-                ChatMessage("c2", "user_1", "SynthFan_99", "🎧", "That drop was insane!! 🔥"),
-                ChatMessage("c3", "user_2", "Viper_X", "🌸", "Sending love from Tokyo 🇯🇵")
-            ),
-            "room_multi_202" to listOf(
-                ChatMessage("c4", "system", "System", senderAvatar = "📢", text = "Welcome to Multi-Guest Stage! Raise hand to speak.", type = MessageType.SYSTEM),
-                ChatMessage("c5", "ghost_rider", "GhostRider", "🏍️", "Who thinks Team Alpha takes the trophy?")
             )
         )
 
         // Pre-fill participants
         _participants.value = mapOf(
-            "room_single_101" to listOf(
-                Participant("dj_kai", "Kai Sterling", "🎧", role = ParticipantRole.HOST),
-                Participant("user_me", "Alex Vance (You)", "🚀", role = ParticipantRole.VIEWER)
+            "room_ceo_999" to listOf(
+                Participant("ceo_rayan", "RAYAN MIRZA (CEO)", "👑", role = ParticipantRole.HOST),
+                Participant("co_founder_alpha", "ALPHA RAJPOOT", "🦁", role = ParticipantRole.ADMIN),
+                Participant("ansharah_gahni", "ANSHARAH GAHNI", "👸", role = ParticipantRole.ADMIN)
             ),
-            "room_multi_202" to listOf(
-                Participant("pixel_queen", "Elena 'PixelQueen'", "🎮", role = ParticipantRole.HOST, seatId = 1),
-                Participant("ghost_rider", "GhostRider", "🏍️", role = ParticipantRole.STAGE_SPEAKER, seatId = 2),
-                Participant("neon_samurai", "NeonSamurai", "⚔️", role = ParticipantRole.STAGE_SPEAKER, seatId = 3),
-                Participant("user_me", "Alex Vance (You)", "🚀", role = ParticipantRole.VIEWER)
+            "room_alpha_888" to listOf(
+                Participant("co_founder_alpha", "ALPHA RAJPOOT", "🦁", role = ParticipantRole.HOST),
+                Participant("ceo_rayan", "RAYAN MIRZA (CEO)", "👑", role = ParticipantRole.ADMIN)
+            ),
+            "room_ansharah_777" to listOf(
+                Participant("ansharah_gahni", "ANSHARAH GAHNI", "👸", role = ParticipantRole.HOST),
+                Participant("ceo_rayan", "RAYAN MIRZA (CEO)", "👑", role = ParticipantRole.ADMIN)
             )
         )
     }
@@ -611,24 +415,35 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
     private fun initializeInitialDms() {
         val initialConversations = listOf(
             ConversationSummary(
-                peerUserId = "dj_kai",
-                peerDisplayName = "Kai Sterling",
-                peerUsername = "@kai_sterling",
-                peerAvatarEmoji = "🎧",
-                peerVipTier = VipTier.VIP_5,
-                lastMessageText = "Thanks for the Golden Dragon gift! Catch you on stream tomorrow 🔥",
-                lastMessageTime = "14:20",
+                peerUserId = "ceo_rayan",
+                peerDisplayName = "RAYAN MIRZA (CEO)",
+                peerUsername = "@rayan_mirza",
+                peerAvatarEmoji = "👑",
+                peerVipTier = VipTier.VIP_9,
+                lastMessageText = "Welcome to ZYVO Live! Reach out anytime on WhatsApp for official creator backing.",
+                lastMessageTime = "12:00",
                 unreadCount = 1,
                 isPeerLive = true
             ),
             ConversationSummary(
-                peerUserId = "pixel_queen",
-                peerDisplayName = "Elena 'PixelQueen'",
-                peerUsername = "@pixel_queen",
-                peerAvatarEmoji = "🎮",
-                peerVipTier = VipTier.SVIP_2,
-                lastMessageText = "Do you want to join our guest stage in the next match?",
+                peerUserId = "co_founder_alpha",
+                peerDisplayName = "ALPHA RAJPOOT",
+                peerUsername = "@alpha_rajpoot",
+                peerAvatarEmoji = "🦁",
+                peerVipTier = VipTier.VIP_9,
+                lastMessageText = "Welcome to the family! Join the PK Arenas and climb the global leaderboards.",
                 lastMessageTime = "Yesterday",
+                unreadCount = 0,
+                isPeerLive = true
+            ),
+            ConversationSummary(
+                peerUserId = "ansharah_gahni",
+                peerDisplayName = "ANSHARAH GAHNI",
+                peerUsername = "@ansharah_gahni",
+                peerAvatarEmoji = "👸",
+                peerVipTier = VipTier.SVIP_7,
+                lastMessageText = "Hello darling! Welcome to Zyvo Live! Let me know if you need any hosting tips ✨",
+                lastMessageTime = "2 days ago",
                 unreadCount = 0,
                 isPeerLive = true
             )
@@ -636,12 +451,14 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
         _conversations.value = initialConversations
 
         _directMessages.value = mapOf(
-            "dj_kai" to listOf(
-                DirectMessage("m1", "user_me", "Alex Vance", "🚀", "Awesome DJ set today Kai!", "14:15", true),
-                DirectMessage("m2", "dj_kai", "Kai Sterling", "🎧", "Thanks for the Golden Dragon gift! Catch you on stream tomorrow 🔥", "14:20", false)
+            "ceo_rayan" to listOf(
+                DirectMessage("m1", "ceo_rayan", "RAYAN MIRZA (CEO)", "👑", "Welcome to ZYVO Live! Reach out anytime on WhatsApp for official creator backing.", "12:00", false)
             ),
-            "pixel_queen" to listOf(
-                DirectMessage("m3", "pixel_queen", "Elena 'PixelQueen'", "🎮", "Do you want to join our guest stage in the next match?", "Yesterday", false)
+            "co_founder_alpha" to listOf(
+                DirectMessage("m2", "co_founder_alpha", "ALPHA RAJPOOT", "🦁", "Welcome to the family! Join the PK Arenas and climb the global leaderboards.", "Yesterday", false)
+            ),
+            "ansharah_gahni" to listOf(
+                DirectMessage("m3", "ansharah_gahni", "ANSHARAH GAHNI", "👸", "Hello darling! Welcome to Zyvo Live! Let me know if you need any hosting tips ✨", "2 days ago", false)
             )
         )
     }
@@ -649,7 +466,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
     // === USER PROFILE & ACTIONS ===
 
     fun getUserProfile(userId: String): UserProfile {
-        if (userId == currentUserIdentity || userId == "user_me") {
+        if (userId == currentUserIdentity || userId == _currentUserProfile.value.userId) {
             return _currentUserProfile.value
         }
         return _userProfiles.value[userId] ?: UserProfile(
@@ -660,15 +477,32 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
         )
     }
 
-    fun updateProfile(displayName: String, bio: String, gender: String, location: String, avatarEmoji: String) {
+    fun updateProfile(
+        displayName: String,
+        bio: String,
+        gender: String,
+        location: String,
+        avatarEmoji: String,
+        username: String? = null,
+        avatarUrl: String? = null,
+        coverGradientIndex: Int? = null
+    ) {
         _currentUserProfile.update { profile ->
             profile.copy(
                 displayName = displayName.ifBlank { profile.displayName },
+                username = username?.ifBlank { profile.username } ?: profile.username,
                 bio = bio,
                 gender = gender,
                 location = location,
-                avatarEmoji = avatarEmoji
+                avatarEmoji = avatarEmoji,
+                avatarUrl = avatarUrl ?: profile.avatarUrl,
+                coverGradientIndex = coverGradientIndex ?: profile.coverGradientIndex
             )
+        }
+        // Update user in directory as well
+        val updated = _currentUserProfile.value
+        _userProfiles.update { map ->
+            map + (updated.userId to updated)
         }
     }
 
@@ -896,12 +730,16 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             )
         } else emptyList()
 
+        val currentProfile = _currentUserProfile.value
         val newRoom = LiveRoom(
             id = newRoomId,
             title = title,
             creatorIdentity = currentUserIdentity,
             hostName = currentUserName,
             hostAvatar = currentUserAvatar,
+            hostAvatarUrl = currentProfile.avatarUrl,
+            roomCoverUrl = currentProfile.avatarUrl,
+            coverStyle = "FULL_BACKDROP",
             roomType = roomType,
             category = category,
             tags = tags,
@@ -918,6 +756,48 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             newRoomId to listOf(Participant(currentUserIdentity, currentUserName, currentUserAvatar, ParticipantRole.HOST))
         )
         sendSystemMessage(newRoomId, "Broadcast Studio live stream initiated! 🔴")
+    }
+
+    fun updateRoomCover(roomId: String, coverUrl: String, coverStyle: String = "FULL_BACKDROP") {
+        _rooms.update { list ->
+            list.map { room ->
+                if (room.id == roomId) {
+                    room.copy(roomCoverUrl = coverUrl, coverStyle = coverStyle)
+                } else room
+            }
+        }
+        if (_currentRoom.value?.id == roomId) {
+            _currentRoom.value = _currentRoom.value?.copy(roomCoverUrl = coverUrl, coverStyle = coverStyle)
+        }
+    }
+
+    fun updateBroadcasterProfilePic(userId: String, newAvatarUrl: String) {
+        if (userId == currentUserIdentity) {
+            _currentUserProfile.update { it.copy(avatarUrl = newAvatarUrl) }
+        }
+        _userProfiles.update { map ->
+            val existing = map[userId]
+            if (existing != null) {
+                map + (userId to existing.copy(avatarUrl = newAvatarUrl))
+            } else map
+        }
+        // Also update any live rooms hosted by this broadcaster
+        _rooms.update { list ->
+            list.map { room ->
+                if (room.creatorIdentity == userId) {
+                    room.copy(
+                        hostAvatarUrl = newAvatarUrl,
+                        roomCoverUrl = if (room.roomCoverUrl == room.hostAvatarUrl || room.roomCoverUrl.isNullOrBlank()) newAvatarUrl else room.roomCoverUrl
+                    )
+                } else room
+            }
+        }
+        if (_currentRoom.value?.creatorIdentity == userId) {
+            _currentRoom.value = _currentRoom.value?.copy(
+                hostAvatarUrl = newAvatarUrl,
+                roomCoverUrl = if (_currentRoom.value?.roomCoverUrl == _currentRoom.value?.hostAvatarUrl || _currentRoom.value?.roomCoverUrl.isNullOrBlank()) newAvatarUrl else _currentRoom.value?.roomCoverUrl
+            )
+        }
     }
 
     fun sendTextMessage(roomId: String, text: String, mention: String? = null) {

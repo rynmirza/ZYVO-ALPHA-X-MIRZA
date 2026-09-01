@@ -1,27 +1,46 @@
 package com.example.zyvo.ui.components
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.zyvo.model.UserProfile
 import com.example.zyvo.model.VipTier
 import com.example.zyvo.ui.theme.*
@@ -40,7 +59,11 @@ fun UserProfileSheet(
     onJoinLive: ((String) -> Unit)? = null,
     onOpenUserDetail: ((String) -> Unit)? = null
 ) {
+    val context = LocalContext.current
     var showReportDialog by remember { mutableStateOf(false) }
+    var selectedBadgeDetail by remember { mutableStateOf<String?>(null) }
+    var activeTab by remember { mutableIntStateOf(0) }
+    var showGiftSheetModal by remember { mutableStateOf(false) }
 
     fun formatCount(count: Int): String {
         return when {
@@ -50,679 +73,1294 @@ fun UserProfileSheet(
         }
     }
 
+    fun copyToClipboard(label: String, text: String) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText(label, text)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(context, "$label copied: $text", Toast.LENGTH_SHORT).show()
+    }
+
+    // Dynamic animations for profile aura & shimmer
+    val infiniteTransition = rememberInfiniteTransition(label = "profile_sheet_anim")
+    val auraPulse by infiniteTransition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "aura_pulse"
+    )
+
+    val haloRotate by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(5000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "halo_rotate"
+    )
+
+    // Themed Colors for Cover & Accents
+    val isCeo = user.userId == "ceo_rayan" || user.executiveRole?.contains("CEO", ignoreCase = true) == true
+    val isCoFounder = user.userId == "co_founder_alpha" || user.executiveRole?.contains("CO-FOUNDER", ignoreCase = true) == true
+    val isTopQueen = user.userId == "ansharah_gahni" || user.isTopHost
+
+    val coverGradient = when {
+        isCeo -> listOf(
+            Color(0xFF4A0E63),
+            Color(0xFF260538),
+            Color(0xFF140220),
+            Color(0xFF330948)
+        )
+        isCoFounder -> listOf(
+            Color(0xFF0F2042),
+            Color(0xFF25073F),
+            Color(0xFF3A0033),
+            Color(0xFF09142E)
+        )
+        isTopQueen -> listOf(
+            Color(0xFF570633),
+            Color(0xFF340727),
+            Color(0xFF1F0317),
+            Color(0xFF420829)
+        )
+        user.vipTier == VipTier.VIP_9 || user.vipTier == VipTier.SVIP_7 -> listOf(
+            Color(0xFF3D2702),
+            Color(0xFF241501),
+            Color(0xFF140C00),
+            Color(0xFF3B2403)
+        )
+        else -> listOf(
+            Color(0xFF1E0C3A),
+            Color(0xFF110724),
+            Color(0xFF090314),
+            Color(0xFF190B30)
+        )
+    }
+
+    val primaryAccent = when {
+        isCeo -> GoldAccent
+        isCoFounder -> NeonCyan
+        isTopQueen -> ElectricMagenta
+        user.vipTier != VipTier.NONE -> GoldAccent
+        else -> NeonPurpleLight
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = DarkSurface,
-        scrimColor = Color.Black.copy(alpha = 0.7f),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        containerColor = Color(0xFF12031E),
+        scrimColor = Color.Black.copy(alpha = 0.82f),
+        dragHandle = null,
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-                .testTag("user_profile_sheet"),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxHeight(0.92f)
+                .verticalScroll(rememberScrollState())
+                .testTag("user_profile_sheet")
         ) {
-            // Header Banner & Avatar Stack
+            // ==========================================
+            // 1. DYNAMIC LUXURY ANIMATED COVER BANNER
+            // ==========================================
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(110.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                Color(0xFF4A148C),
-                                Color(0xFF7B1FA2),
-                                Color(0xFF311B92)
-                            )
+                    .height(175.dp)
+                    .background(Brush.verticalGradient(coverGradient))
+            ) {
+                // Cyber Particle & Grid Backdrop
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+                    // Ambient light rays
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(primaryAccent.copy(alpha = 0.35f), Color.Transparent),
+                            center = Offset(w * 0.5f, h * 0.3f),
+                            radius = w * 0.6f
                         )
-                    ),
-                contentAlignment = Alignment.TopEnd
-            ) {
-                IconButton(
-                    onClick = { showReportDialog = true },
-                    modifier = Modifier.padding(6.dp)
-                ) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = TextPrimary)
-                }
-            }
-
-            // Avatar floating overlapping the banner
-            Box(
-                modifier = Modifier.offset(y = (-45).dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (user.vipTier == VipTier.VIP_9 || !user.avatarUrl.isNullOrBlank() || user.userLevel >= 99) {
-                    ExecutiveAvatar(
-                        avatarUrl = user.avatarUrl,
-                        avatarEmoji = user.avatarEmoji,
-                        size = 86.dp,
-                        userLevel = user.userLevel,
-                        vipTier = user.vipTier,
-                        showCrown = user.vipTier != VipTier.NONE,
-                        showLevelBadge = false
                     )
-                } else {
+                    // Decorative grid lines
+                    drawLine(
+                        color = primaryAccent.copy(alpha = 0.15f),
+                        start = Offset(0f, h * 0.75f),
+                        end = Offset(w, h * 0.75f),
+                        strokeWidth = 1f
+                    )
+                    drawLine(
+                        color = primaryAccent.copy(alpha = 0.1f),
+                        start = Offset(0f, h * 0.9f),
+                        end = Offset(w, h * 0.9f),
+                        strokeWidth = 1.5f
+                    )
+                }
+
+                // Decorative Watermark Branding on Cover
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = 20.dp, top = 22.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = when {
+                                isCeo -> "👑 ZYVO EXECUTIVE SUITE"
+                                isCoFounder -> "🦁 GLOBAL ARENAS & PK"
+                                isTopQueen -> "💎 TOP HOST QUEEN STAGE"
+                                user.vipTier != VipTier.NONE -> "✨ VIP PRESTIGE LOUNGE"
+                                else -> "⚡ ZYVO LIVE CREATOR"
+                            },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = primaryAccent,
+                            letterSpacing = 1.5.sp
+                        )
+                    }
+                    Text(
+                        text = when {
+                            isCeo -> "London Global HQ • Sovereign Desk"
+                            isCoFounder -> "Executive Director • PK Arenas"
+                            isTopQueen -> "Superstar Broadcaster • 78.5M+"
+                            else -> "Verified Broadcaster Profile"
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary.copy(alpha = 0.8f)
+                    )
+                }
+
+                // Top Controls Bar on Cover (Live Radar, WhatsApp, Share, More, Close)
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(end = 16.dp, top = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // LIVE RADAR PILL ON COVER (If host is live right now!)
+                    if (user.isLiveNow && user.currentRoomId != null && onJoinLive != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Brush.horizontalGradient(listOf(LiveRed, ElectricMagenta)))
+                                .border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(20.dp))
+                                .clickable {
+                                    onDismiss()
+                                    onJoinLive(user.currentRoomId)
+                                }
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .scale(auraPulse)
+                                        .clip(CircleShape)
+                                        .background(Color.White)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = "LIVE",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    // Direct WhatsApp Button on Cover for Executives
+                    if (user.whatsappNumber != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF25D366))
+                                .border(1.dp, Color.White, CircleShape)
+                                .clickable {
+                                    openWhatsAppChat(context, user.whatsappNumber, user.displayName)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("💬", fontSize = 16.sp)
+                        }
+                    }
+
+                    // Share Profile Button
                     Box(
                         modifier = Modifier
-                            .size(90.dp)
+                            .size(34.dp)
                             .clip(CircleShape)
-                            .background(DarkBackground)
-                            .border(
-                                3.dp,
-                                if (user.vipTier != VipTier.NONE) Color(android.graphics.Color.parseColor(user.vipTier.avatarBorderColorHex))
-                                else NeonPurple,
-                                CircleShape
-                            ),
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .border(1.dp, OverlayLight, CircleShape)
+                            .clickable {
+                                copyToClipboard("Profile Link", "https://zyvo.live/user/${user.userId}")
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = user.avatarEmoji, fontSize = 46.sp)
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    // More Options (Report / Block)
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .border(1.dp, OverlayLight, CircleShape)
+                            .clickable { showReportDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "More",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    // Dismiss Sheet Button
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .border(1.dp, OverlayLight, CircleShape)
+                            .clickable { onDismiss() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height((-35).dp))
-
-            // Executive Tag if present
-            if (user.executiveRole != null) {
+            // ==========================================
+            // 2. OVERLAPPING DELUXE HOLOGRAPHIC AVATAR
+            // ==========================================
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Floating Avatar Stack
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(GoldAccent, Color(0xFFFF007A))
-                            )
-                        )
-                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                        .offset(y = (-52).dp)
+                        .size(112.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "⭐ ${user.executiveRole} ⭐",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.Black
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            // Name & VIP Badge
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = user.displayName,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    color = TextPrimary
-                )
-
-                if (user.vipTier != VipTier.NONE) {
-                    Spacer(modifier = Modifier.width(6.dp))
+                    // Outer Pulsing Neon Glow Ring
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(GoldAccent)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .size(112.dp * auraPulse)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    colors = listOf(
+                                        primaryAccent.copy(alpha = 0.55f),
+                                        Color(0xFFFF007A).copy(alpha = 0.25f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+
+                    // Rotating Rainbow / Gold Halo Border
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .rotate(haloRotate)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.sweepGradient(
+                                    colors = listOf(
+                                        primaryAccent,
+                                        Color(0xFFFF007A),
+                                        NeonCyan,
+                                        GoldAccent,
+                                        Color(0xFFFF6B00),
+                                        primaryAccent
+                                    )
+                                )
+                            )
+                    )
+
+                    // Inner Avatar Container
+                    Box(
+                        modifier = Modifier
+                            .size(92.dp)
+                            .clip(CircleShape)
+                            .background(DarkBackground)
+                            .border(2.5.dp, Color(0xFF140220), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (!user.avatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(user.avatarUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = user.displayName,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Text(
+                                text = user.avatarEmoji,
+                                fontSize = 48.sp
+                            )
+                        }
+                    }
+
+                    // Floating 3D VIP Crown on Top of Avatar
+                    if (user.vipTier != VipTier.NONE || isCeo || isCoFounder || isTopQueen) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .offset(y = (-10).dp)
+                                .shadow(8.dp, RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(GoldAccent, Color(0xFFFF8800), GoldAccent)
+                                    )
+                                )
+                                .border(1.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("👑", fontSize = 10.sp)
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = if (user.vipTier != VipTier.NONE) user.vipTier.badge else "VIP 9",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.Black
+                                )
+                            }
+                        }
+                    }
+
+                    // Floating Level Pill at Base of Avatar
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .offset(y = (10).dp)
+                            .shadow(6.dp, RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF7B1FA2), Color(0xFFFF007A))
+                                )
+                            )
+                            .border(1.dp, GoldAccent, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = user.vipTier.badge,
+                            text = "⭐ Lv.${user.userLevel}",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            color = TextPrimary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height((-38).dp))
+
+                // ==========================================
+                // 3. EXECUTIVE ROLE & VIP TITLES
+                // ==========================================
+                if (user.executiveRole != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        GoldAccent,
+                                        Color(0xFFFF007A),
+                                        GoldAccent
+                                    )
+                                )
+                            )
+                            .border(1.dp, Color.White.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 5.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "⭐", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = user.executiveRole.uppercase(),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.Black,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "⭐", fontSize = 12.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                } else if (isTopQueen) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(ElectricMagenta, GoldAccent, ElectricMagenta)
+                                )
+                            )
+                            .border(1.dp, Color.White.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 14.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            text = "👑 ZYVO TOP HOST QUEEN • SVIP 7 👑",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Black,
                             color = Color.Black
                         )
                     }
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
-            }
 
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = "@${user.username} • ID: ${user.userId}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = NeonCyan
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Level Badges Row
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // User Level Badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(NeonPurpleDark)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                // ==========================================
+                // 4. DISPLAY NAME & VERIFIED STATUS
+                // ==========================================
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "⭐ Lv. ${user.userLevel}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = user.displayName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black,
                         color = TextPrimary
                     )
-                }
 
-                // Host Level Badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(ElectricMagenta.copy(alpha = 0.3f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "🎙️ Host Lv. ${user.hostLevel}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ElectricMagenta
-                    )
-                }
+                    Spacer(modifier = Modifier.width(6.dp))
 
-                // Wealth Level Badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(GoldAccent.copy(alpha = 0.3f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "💎 Wealth Lv. ${user.wealthLevel}",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = GoldAccent
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Bio
-            Text(
-                text = user.bio,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Stats Row: Followers, Following, Likes, Receiving
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkCardElevated)
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = formatCount(user.followersCount),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(text = "Followers", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                }
-
-                Divider(
-                    modifier = Modifier
-                        .height(28.dp)
-                        .width(1.dp),
-                    color = OverlayLight
-                )
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "${user.followingCount}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(text = "Following", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                }
-
-                Divider(
-                    modifier = Modifier
-                        .height(28.dp)
-                        .width(1.dp),
-                    color = OverlayLight
-                )
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = formatCount(user.likesCount),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(text = "Likes", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                }
-
-                Divider(
-                    modifier = Modifier
-                        .height(28.dp)
-                        .width(1.dp),
-                    color = OverlayLight
-                )
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = formatCount(user.diamondsEarnedTotal),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = GoldAccent
-                    )
-                    Text(text = "Receiving", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                }
-            }
-
-            // Top Host Heavy Receiving Showcase Card
-            if (user.userId == "ansharah_gahni" || user.isTopHost) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    Color(0xFFFF007A).copy(alpha = 0.2f),
-                                    GoldAccent.copy(alpha = 0.25f),
-                                    NeonPurpleDark
-                                )
-                            )
-                        )
-                        .border(1.dp, GoldAccent.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                        .padding(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    // Verified Check Badge
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(primaryAccent),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "💎 HEAVY RECEIVING TOP HOST",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = GoldAccent
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("👑", fontSize = 14.sp)
-                            }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "78.5M+ Diamonds Earned • 75,800 Gifts • SVIP 7 QUEEN",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                        }
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = "Verified",
+                            tint = Color.Black,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
 
+                    if (user.vipTier != VipTier.NONE) {
+                        Spacer(modifier = Modifier.width(6.dp))
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(GoldAccent)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    Brush.horizontalGradient(listOf(GoldAccent, Color(0xFFFF8800)))
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = "Lv.89 ID",
-                                fontSize = 11.sp,
+                                text = user.vipTier.badge,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Black,
                                 color = Color.Black
                             )
                         }
                     }
                 }
-            }
 
-            // Exclusive Following Section (If user follows only Founder & Co-Founder)
-            if (user.userId == "ansharah_gahni" || user.followingUserIds.isNotEmpty()) {
-                val context = LocalContext.current
-                Spacer(modifier = Modifier.height(14.dp))
-                Column(
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Copyable Username & ID Pill
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(DarkCardElevated)
-                        .border(1.dp, NeonCyan.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                        .padding(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Following (${user.followingCount})",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Black,
-                                color = NeonCyan
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "• Founder & Co-Founder Only",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = TextMuted
-                            )
-                        }
-                        Text("👑", fontSize = 14.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Founder Item: CEO Rayan Mirza
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkBackground)
-                            .clickable {
-                                onDismiss()
-                                onOpenUserDetail?.invoke("ceo_rayan")
-                            }
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        ExecutiveAvatar(
-                            avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
-                            avatarEmoji = "👑",
-                            size = 40.dp,
-                            userLevel = 99,
-                            vipTier = VipTier.VIP_9,
-                            showCrown = false,
-                            showLevelBadge = false
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "RAYAN MIRZA",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = GoldAccent
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("👑", fontSize = 11.sp)
-                            }
-                            Text(
-                                text = "Founder & CEO • Lv.99 • VIP 9",
-                                fontSize = 10.sp,
-                                color = TextSecondary
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF25D366))
-                                .clickable {
-                                    openWhatsAppChat(context, "+44 7868 713315", "RAYAN MIRZA")
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("💬", fontSize = 13.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Co-Founder Item: Alpha Rajpoot
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkBackground)
-                            .clickable {
-                                onDismiss()
-                                onOpenUserDetail?.invoke("co_founder_alpha")
-                            }
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        ExecutiveAvatar(
-                            avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
-                            avatarEmoji = "🦁",
-                            size = 40.dp,
-                            userLevel = 99,
-                            vipTier = VipTier.VIP_9,
-                            showCrown = false,
-                            showLevelBadge = false
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "ALPHA RAJPOOT",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = ElectricMagenta
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("🦁", fontSize = 11.sp)
-                            }
-                            Text(
-                                text = "Co-Founder & Exec Director • Lv.99 • VIP 9",
-                                fontSize = 10.sp,
-                                color = TextSecondary
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF25D366))
-                                .clickable {
-                                    openWhatsAppChat(context, "+447366 387620", "ALPHA RAJPOOT")
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("💬", fontSize = 13.sp)
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Top Fans Section (Podium layout from reference image)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkCardElevated.copy(alpha = 0.6f))
-                    .padding(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Top Fans",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(Icons.Default.Add, contentDescription = "Add", tint = TextMuted, modifier = Modifier.size(18.dp))
-                        Icon(Icons.Default.Search, contentDescription = "Search", tint = TextMuted, modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val fans = listOf(
-                        Triple("👑 1", "👑", "King Of Kings"),
-                        Triple("🥈 2", "🦁", "Drama Queen"),
-                        Triple("🥉 3", "🎧", "DJ Kai"),
-                        Triple("4", "👾", "Pixel Queen")
-                    )
-
-                    fans.forEach { (rank, emoji, name) ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(DarkBackground)
-                                    .border(
-                                        1.5.dp,
-                                        if (rank.contains("1")) GoldAccent else NeonPurple,
-                                        CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = emoji, fontSize = 20.sp)
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = name, fontSize = 9.sp, color = TextSecondary, maxLines = 1)
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Live status banner if host is live right now
-            if (user.isLiveNow && user.currentRoomId != null && onJoinLive != null) {
-                Button(
-                    onClick = {
-                        onDismiss()
-                        onJoinLive(user.currentRoomId)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = LiveRed),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(DarkSurface)
+                        .border(1.dp, OverlayLight, RoundedCornerShape(12.dp))
+                        .clickable { copyToClipboard("User ID", user.userId) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "🔴 LIVE NOW — Tap to Watch", fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text(
+                            text = "@${user.username} • ID: ${user.userId}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonCyan
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "Copy ID",
+                            tint = TextMuted,
+                            modifier = Modifier.size(13.dp)
+                        )
                     }
                 }
-            }
 
-            // Action Buttons Row (Follow / Unfollow, Direct Message, Share)
-            if (!isSelf) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ==========================================
+                // 5. TRIPLE PRESTIGE LEVEL BADGES ROW
+                // ==========================================
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Follow / Unfollow
-                    Button(
-                        onClick = {
-                            if (user.isFollowedByCurrentUser) onUnfollow() else onFollow()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (user.isFollowedByCurrentUser) DarkCardElevated else NeonPurple
-                        ),
-                        shape = RoundedCornerShape(14.dp),
+                    // 1. Account Level
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .testTag("profile_sheet_follow_btn")
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF4A148C), Color(0xFF7B1FA2))
+                                )
+                            )
+                            .border(1.dp, Color(0xFFBA68C8).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = if (user.isFollowedByCurrentUser) Icons.Default.Check else Icons.Default.PersonAdd,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("⭐", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (user.isFollowedByCurrentUser) "Following" else "Follow",
-                                fontWeight = FontWeight.Bold
+                                text = "Lv.${user.userLevel}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = TextPrimary
                             )
                         }
                     }
 
-                    // Direct Message Button
-                    OutlinedButton(
-                        onClick = {
-                            onDismiss()
-                            onOpenDm()
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, NeonCyan),
+                    // 2. Broadcaster / Host Level
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .testTag("profile_sheet_dm_btn")
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF880E4F), Color(0xFFC2185B))
+                                )
+                            )
+                            .border(1.dp, ElectricMagenta.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.ChatBubbleOutline, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "Message", fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("🎙️", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Host Lv.${user.hostLevel}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFFFF80AB)
+                            )
+                        }
+                    }
+
+                    // 3. Wealth / Gifter Level
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF5D4037), Color(0xFFFF8F00))
+                                )
+                            )
+                            .border(1.dp, GoldAccent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("💎", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Wealth Lv.${user.wealthLevel}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = GoldAccent
+                            )
                         }
                     }
                 }
 
-                // WhatsApp Direct Contact Button for Executive Profiles
-                if (user.whatsappNumber != null) {
-                    val context = LocalContext.current
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Button(
-                        onClick = {
-                            openWhatsAppChat(context, user.whatsappNumber, user.displayName)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp)
-                            .testTag("whatsapp_executive_btn")
-                    ) {
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // ==========================================
+                // 6. BIO & LOCATION
+                // ==========================================
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(DarkSurface.copy(alpha = 0.7f))
+                        .padding(12.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = user.bio,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            Text(text = "💬", fontSize = 18.sp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "WhatsApp Direct: ${user.whatsappNumber}",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color.White
-                            )
+                            Text("📍", fontSize = 11.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = user.location, fontSize = 11.sp, color = TextMuted)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("•", color = TextMuted, fontSize = 11.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("🛡️ ${user.gender}", fontSize = 11.sp, color = TextMuted)
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // ==========================================
+                // 7. INTERACTIVE STATS HUB (Followers, Following, Likes, Diamonds)
+                // ==========================================
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(DarkCardElevated)
+                        .border(1.dp, OverlayLight, RoundedCornerShape(18.dp))
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = formatCount(user.followersCount),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = TextPrimary
+                        )
+                        Text(text = "Followers", fontSize = 10.sp, color = TextMuted)
+                    }
+
+                    Box(modifier = Modifier.height(26.dp).width(1.dp).background(OverlayLight))
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${user.followingCount}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = TextPrimary
+                        )
+                        Text(text = "Following", fontSize = 10.sp, color = TextMuted)
+                    }
+
+                    Box(modifier = Modifier.height(26.dp).width(1.dp).background(OverlayLight))
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = formatCount(user.likesCount),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = TextPrimary
+                        )
+                        Text(text = "Likes", fontSize = 10.sp, color = TextMuted)
+                    }
+
+                    Box(modifier = Modifier.height(26.dp).width(1.dp).background(OverlayLight))
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = formatCount(user.diamondsEarnedTotal),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = GoldAccent
+                        )
+                        Text(text = "💎 Wealth", fontSize = 10.sp, color = GoldAccent.copy(alpha = 0.8f))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ==========================================
+                // 8. PRIMARY ACTION COMMAND BAR
+                // ==========================================
+                if (!isSelf) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 1. Follow / Unfollow Button
+                        Button(
+                            onClick = {
+                                if (user.isFollowedByCurrentUser) onUnfollow() else onFollow()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (user.isFollowedByCurrentUser) DarkCardElevated else primaryAccent
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .height(46.dp)
+                                .testTag("profile_sheet_follow_btn")
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (user.isFollowedByCurrentUser) Icons.Default.Check else Icons.Default.PersonAdd,
+                                    contentDescription = null,
+                                    tint = if (user.isFollowedByCurrentUser) TextPrimary else Color.Black,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (user.isFollowedByCurrentUser) "Following" else "Follow",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (user.isFollowedByCurrentUser) TextPrimary else Color.Black
+                                )
+                            }
+                        }
+
+                        // 2. Direct Message Button
+                        OutlinedButton(
+                            onClick = {
+                                onDismiss()
+                                onOpenDm()
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, NeonCyan),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("profile_sheet_dm_btn")
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.ChatBubbleOutline, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "Chat", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            }
+                        }
+
+                        // 3. Send Gift / Tip Button
+                        Button(
+                            onClick = {
+                                showGiftSheetModal = true
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ElectricMagenta
+                            ),
+                            modifier = Modifier
+                                .weight(1.1f)
+                                .height(46.dp)
+                                .testTag("profile_sheet_gift_btn")
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("🎁", fontSize = 15.sp)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Send Gift", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                    }
+
+                    // WhatsApp Direct Contact Button for Executive Profiles
+                    if (user.whatsappNumber != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                openWhatsAppChat(context, user.whatsappNumber, user.displayName)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = Color(0xFF25D366))
+                                .testTag("whatsapp_executive_btn")
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(text = "💬", fontSize = 20.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Direct WhatsApp Executive Desk: ${user.whatsappNumber}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // ==========================================
+                // 9. MULTI-TAB DEEP PROFILE NAVIGATION
+                // ==========================================
+                val tabs = listOf("🌟 Overview", "🏆 Badges", "👑 Top Supporters", "🎬 Highlights")
+                TabRow(
+                    selectedTabIndex = activeTab,
+                    containerColor = DarkSurface,
+                    contentColor = primaryAccent,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[activeTab]),
+                            color = primaryAccent,
+                            height = 3.dp
+                        )
+                    },
+                    divider = {},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = activeTab == index,
+                            onClick = { activeTab = index },
+                            text = {
+                                Text(
+                                    text = title,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (activeTab == index) FontWeight.Black else FontWeight.Bold,
+                                    color = if (activeTab == index) primaryAccent else TextMuted
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // ==========================================
+                // 10. TAB CONTENT DISPLAY
+                // ==========================================
+                when (activeTab) {
+                    // TAB 0: OVERVIEW & VIP PRIVILEGES
+                    0 -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Honorary Badges Showcase Rack
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(DarkSurface)
+                                    .border(1.dp, OverlayLight, RoundedCornerShape(16.dp))
+                                    .padding(14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Badges & Honorifics 🎖️",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Black,
+                                        color = TextPrimary
+                                    )
+                                    Text(
+                                        text = "${user.badges.size} Earned",
+                                        fontSize = 11.sp,
+                                        color = primaryAccent,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(user.badges) { badge ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(
+                                                    Brush.horizontalGradient(
+                                                        listOf(Color(0xFF2A0845), Color(0xFF6441A5))
+                                                    )
+                                                )
+                                                .border(1.dp, primaryAccent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                                .clickable { selectedBadgeDetail = badge }
+                                                .padding(horizontal = 12.dp, vertical = 7.dp)
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text("✨", fontSize = 12.sp)
+                                                Spacer(modifier = Modifier.width(5.dp))
+                                                Text(
+                                                    text = badge,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = TextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // VIP Supreme Privileges (For VIP & Executive Profiles)
+                            if (user.vipTier != VipTier.NONE || isCeo || isCoFounder) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(Color(0xFF331E00), Color(0xFF1F1200))
+                                            )
+                                        )
+                                        .border(1.5.dp, GoldAccent.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                                        .padding(14.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("👑", fontSize = 18.sp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "VIP 9 Supreme Privileges Active",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Black,
+                                            color = GoldAccent
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    val perks = listOf(
+                                        "🌟 Sovereign Entrance Halo Animation across all Live Rooms",
+                                        "🛡️ Permanent Anti-Kick & Anti-Mute Protection Shield",
+                                        "💬 Golden Highlighted Chat Bubble with Animated Crown",
+                                        "💎 Priority PK Arena Matchmaking & Stage Dominance",
+                                        "⚡ 100% Boosted Charm & Gifting Multipliers"
+                                    )
+
+                                    perks.forEach { perk ->
+                                        Text(
+                                            text = perk,
+                                            fontSize = 11.sp,
+                                            color = TextSecondary,
+                                            modifier = Modifier.padding(vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Following Highlight (If following Rayan & Alpha)
+                            if (user.followingUserIds.isNotEmpty() || isTopQueen) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(DarkSurface)
+                                        .border(1.dp, NeonCyan.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                                        .padding(14.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Officially Following (Founder & Co-Founder)",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = NeonCyan
+                                        )
+                                        Text("👑", fontSize = 14.sp)
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // Rayan Mirza
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(DarkBackground)
+                                            .clickable {
+                                                onDismiss()
+                                                onOpenUserDetail?.invoke("ceo_rayan")
+                                            }
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("👑", fontSize = 18.sp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("RAYAN MIRZA", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GoldAccent)
+                                            Text("Founder & CEO • Lv.99 Sovereign", fontSize = 10.sp, color = TextMuted)
+                                        }
+                                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = GoldAccent)
+                                    }
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    // Alpha Rajpoot
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(DarkBackground)
+                                            .clickable {
+                                                onDismiss()
+                                                onOpenUserDetail?.invoke("co_founder_alpha")
+                                            }
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("🦁", fontSize = 18.sp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("ALPHA RAJPOOT", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = ElectricMagenta)
+                                            Text("Co-Founder & Exec Director • Lv.99", fontSize = 10.sp, color = TextMuted)
+                                        }
+                                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = ElectricMagenta)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // TAB 1: ALL PRESTIGE BADGES GALLERY
+                    1 -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            val allAchievements = listOf(
+                                Triple("👑 Founder & Sovereign", "Highest executive leadership badge", "Mythic"),
+                                Triple("💎 VIP 9 Supreme Tier", "Unlocks golden broadcast auras", "Legendary"),
+                                Triple("⭐ Level 99 Hall of Fame", "Maximum platform experience tier", "Mythic"),
+                                Triple("⚔️ PK Arena Grandmaster", "Over 500+ PK Arena victories", "Legendary"),
+                                Triple("💖 Millionaire Gifter", "Contributed over 10M+ diamonds", "Epic"),
+                                Triple("🎙️ Top 1% Broadcaster", "Streamed over 1,000+ live hours", "Epic"),
+                                Triple("🕊️ Peace Ambassador", "Community guardian & mentor", "Rare")
+                            )
+
+                            allAchievements.forEach { (title, desc, rarity) ->
+                                val rarityColor = when (rarity) {
+                                    "Mythic" -> GoldAccent
+                                    "Legendary" -> ElectricMagenta
+                                    "Epic" -> NeonPurpleLight
+                                    else -> NeonCyan
+                                }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(DarkSurface)
+                                        .border(1.dp, rarityColor.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(text = title, fontSize = 13.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(rarityColor.copy(alpha = 0.2f))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(text = rarity, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = rarityColor)
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(text = desc, fontSize = 11.sp, color = TextSecondary)
+                                    }
+                                    Icon(Icons.Default.LockOpen, contentDescription = "Unlocked", tint = rarityColor, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    // TAB 2: TOP SUPPORTERS PODIUM
+                    2 -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                text = "Hall of Fame Top Gifters 👑",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Black,
+                                color = GoldAccent
+                            )
+
+                            val supporters = listOf(
+                                Triple("1. King Of Kings", "12.5M Diamonds", "👑 VIP 9"),
+                                Triple("2. Drama Queen", "8.9M Diamonds", "🦁 SVIP 7"),
+                                Triple("3. DJ Kai", "5.4M Diamonds", "🎧 VIP 5"),
+                                Triple("4. Pixel Queen", "3.2M Diamonds", "👾 VIP 3")
+                            )
+
+                            supporters.forEachIndexed { index, (name, diamonds, vip) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (index == 0) Color(0xFF2A1B02) else DarkSurface)
+                                        .border(
+                                            1.dp,
+                                            if (index == 0) GoldAccent else OverlayLight,
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = if (index == 0) "🥇" else if (index == 1) "🥈" else if (index == 2) "🥉" else "🏅",
+                                            fontSize = 18.sp
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(text = name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                            Text(text = vip, fontSize = 10.sp, color = GoldAccent)
+                                        }
+                                    }
+
+                                    Text(
+                                        text = diamonds,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = GoldAccent
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // TAB 3: STREAM HIGHLIGHTS & PK RECORDS
+                    3 -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // PK Battles Record Card
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(Color(0xFF4A0028), Color(0xFF1E004A))
+                                        )
+                                    )
+                                    .border(1.dp, ElectricMagenta.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                                    .padding(14.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("⚔️ 99.4%", fontSize = 18.sp, fontWeight = FontWeight.Black, color = GoldAccent)
+                                    Text("PK Win Rate", fontSize = 10.sp, color = TextSecondary)
+                                }
+                                Box(modifier = Modifier.height(30.dp).width(1.dp).background(OverlayLight))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("🔥 99 Wins", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ElectricMagenta)
+                                    Text("Win Streak", fontSize = 10.sp, color = TextSecondary)
+                                }
+                                Box(modifier = Modifier.height(30.dp).width(1.dp).background(OverlayLight))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("🎬 ${user.liveStreamsCount}", fontSize = 18.sp, fontWeight = FontWeight.Black, color = NeonCyan)
+                                    Text("Live Streams", fontSize = 10.sp, color = TextSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+            }
         }
 
-        // Report & Block Dialog
+        // BADGE DETAIL TOOLTIP MODAL
+        if (selectedBadgeDetail != null) {
+            AlertDialog(
+                onDismissRequest = { selectedBadgeDetail = null },
+                containerColor = DarkSurface,
+                shape = RoundedCornerShape(20.dp),
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🎖️", fontSize = 20.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = selectedBadgeDetail!!, color = GoldAccent, fontWeight = FontWeight.Bold)
+                    }
+                },
+                text = {
+                    Text(
+                        text = "Official honorary insignia awarded for top contribution, broadcaster supremacy, and community leadership on ZYVO Live.",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { selectedBadgeDetail = null },
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryAccent)
+                    ) {
+                        Text("Awesome!", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+        }
+
+        // REPORT & BLOCK DIALOG
         if (showReportDialog) {
             AlertDialog(
                 onDismissRequest = { showReportDialog = false },
                 containerColor = DarkSurface,
-                title = { Text(text = "User Options", color = TextPrimary, fontWeight = FontWeight.Bold) },
+                shape = RoundedCornerShape(20.dp),
+                title = { Text(text = "Profile Actions", color = TextPrimary, fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(
                             onClick = {
                                 onReport()
                                 showReportDialog = false
+                                Toast.makeText(context, "Report submitted to Safety Team", Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Flag, contentDescription = null, tint = LiveRed)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Report User for Violations", color = LiveRed)
+                                Text("Report Account for Policy Violation", color = LiveRed)
                             }
                         }
                         TextButton(
@@ -730,6 +1368,7 @@ fun UserProfileSheet(
                                 onBlock()
                                 showReportDialog = false
                                 onDismiss()
+                                Toast.makeText(context, "@${user.username} blocked", Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -743,7 +1382,67 @@ fun UserProfileSheet(
                 },
                 confirmButton = {
                     TextButton(onClick = { showReportDialog = false }) {
-                        Text("Cancel", color = NeonCyan)
+                        Text("Close", color = NeonCyan)
+                    }
+                }
+            )
+        }
+
+        // QUICK SEND GIFT SHEET
+        if (showGiftSheetModal) {
+            AlertDialog(
+                onDismissRequest = { showGiftSheetModal = false },
+                containerColor = DarkSurface,
+                shape = RoundedCornerShape(24.dp),
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🎁", fontSize = 22.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Send Gift to ${user.displayName}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(text = "Select a luxury gift to boost charm & support:", fontSize = 12.sp, color = TextSecondary)
+                        
+                        val quickGifts = listOf(
+                            Triple("👑 Royal Crown", "9,999 🪙", "👑"),
+                            Triple("🚀 Super Rocket", "4,999 🪙", "🚀"),
+                            Triple("💎 Diamond Ring", "1,999 🪙", "💎"),
+                            Triple("🌹 Love Rose", "99 🪙", "🌹")
+                        )
+
+                        quickGifts.forEach { (name, cost, icon) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(DarkBackground)
+                                    .border(1.dp, OverlayLight, RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        showGiftSheetModal = false
+                                        Toast.makeText(context, "Sent $name to ${user.displayName}! 💖", Toast.LENGTH_LONG).show()
+                                    }
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(icon, fontSize = 20.sp)
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 13.sp)
+                                }
+                                Text(cost, fontWeight = FontWeight.Black, color = GoldAccent, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showGiftSheetModal = false }) {
+                        Text("Cancel", color = TextMuted)
                     }
                 }
             )

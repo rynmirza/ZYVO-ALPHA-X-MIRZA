@@ -29,6 +29,8 @@ fun MultiGuestVideoGrid(
     seats: List<Seat>,
     hostName: String,
     hostAvatar: String,
+    hostAvatarUrl: String? = null,
+    hostCoverUrl: String? = null,
     filter: BeautifyFilter = BeautifyFilter.ORIGINAL,
     onSeatClick: (Seat) -> Unit = {}
 ) {
@@ -55,6 +57,8 @@ fun MultiGuestVideoGrid(
                     .fillMaxHeight(),
                 hostName = hostName,
                 avatarEmoji = hostAvatar,
+                avatarUrl = hostAvatarUrl,
+                roomCoverUrl = hostCoverUrl,
                 isSpeaking = true,
                 badgeText = "👑 HOST",
                 badgeColor = NeonPurple,

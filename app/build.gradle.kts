@@ -13,8 +13,8 @@ android {
         applicationId = "com.aistudio.zyvolive.vstrpz"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -67,5 +67,6 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.coil.compose)
+    implementation(libs.google.play.services.auth)
     debugImplementation(libs.androidx.ui.tooling)
 }
