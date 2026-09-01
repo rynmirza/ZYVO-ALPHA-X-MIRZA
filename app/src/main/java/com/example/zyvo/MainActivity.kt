@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -305,84 +306,155 @@ fun ZyvoBottomBar(
     onSelectTab: (Int) -> Unit,
     onGoLiveClick: () -> Unit
 ) {
-    NavigationBar(
-        containerColor = DarkSurface,
-        contentColor = TextPrimary,
-        tonalElevation = 8.dp,
-        modifier = Modifier.testTag("zyvo_bottom_bar")
+    val infiniteTransition = rememberInfiniteTransition(label = "go_live_pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
+    Surface(
+        color = DarkSurface.copy(alpha = 0.95f),
+        tonalElevation = 16.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(listOf(OverlayLight, Color.Transparent)),
+                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
+            )
+            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+            .testTag("zyvo_bottom_bar")
     ) {
-        NavigationBarItem(
-            selected = selectedTab == 0,
-            onClick = { onSelectTab(0) },
-            icon = { Icon(Icons.Default.Explore, contentDescription = "Home") },
-            label = { Text("HOME", fontSize = 10.sp, fontWeight = FontWeight.Black) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonCyan,
-                selectedTextColor = NeonCyan,
-                unselectedIconColor = TextMuted,
-                unselectedTextColor = TextMuted,
-                indicatorColor = NeonPurpleDark
-            )
-        )
-
-        NavigationBarItem(
-            selected = selectedTab == 1,
-            onClick = { onSelectTab(1) },
-            icon = { Icon(Icons.Default.Tv, contentDescription = "Live") },
-            label = { Text("LIVE", fontSize = 10.sp, fontWeight = FontWeight.Black) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonCyan,
-                selectedTextColor = NeonCyan,
-                unselectedIconColor = TextMuted,
-                unselectedTextColor = TextMuted,
-                indicatorColor = NeonPurpleDark
-            )
-        )
-
-        // Center glowing Go Live button
-        Box(
+        Row(
             modifier = Modifier
-                .padding(horizontal = 4.dp)
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.linearGradient(
-                        listOf(ElectricMagenta, NeonPurple)
-                    )
-                )
-                .border(2.dp, GoldAccent, CircleShape)
-                .clickable { onGoLiveClick() },
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Videocam, contentDescription = "Go Live", tint = TextPrimary, modifier = Modifier.size(26.dp))
+            // Tab 0: Explore / Home
+            BottomNavItem(
+                icon = Icons.Default.Explore,
+                label = "Explore",
+                isSelected = selectedTab == 0,
+                onClick = { onSelectTab(0) }
+            )
+
+            // Tab 1: Live / Following
+            BottomNavItem(
+                icon = Icons.Default.LiveTv,
+                label = "Live",
+                isSelected = selectedTab == 1,
+                onClick = { onSelectTab(1) }
+            )
+
+            // Center: Signature Yeah! Live Elevated Glowing "Go Live" Button
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .offset(y = (-4).dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Ambient Glow Aura
+                Box(
+                    modifier = Modifier
+                        .size((52f * pulseScale).dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(ElectricMagenta.copy(alpha = 0.5f), Color.Transparent)
+                            )
+                        )
+                )
+
+                // Main Central Button
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(ElectricMagenta, NeonPurple, CyberBlue)
+                            )
+                        )
+                        .border(2.dp, Brush.linearGradient(listOf(GoldAccent, Color.White)), CircleShape)
+                        .clickable { onGoLiveClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Go Live",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            // Tab 3: Messages / Chat
+            BottomNavItem(
+                icon = Icons.Default.Forum,
+                label = "Messages",
+                isSelected = selectedTab == 3,
+                onClick = { onSelectTab(3) },
+                hasBadge = true
+            )
+
+            // Tab 4: Profile / Me
+            BottomNavItem(
+                icon = Icons.Default.Person,
+                label = "Me",
+                isSelected = selectedTab == 4,
+                onClick = { onSelectTab(4) }
+            )
         }
+    }
+}
 
-        NavigationBarItem(
-            selected = selectedTab == 3,
-            onClick = { onSelectTab(3) },
-            icon = { Icon(Icons.Default.Chat, contentDescription = "Chat") },
-            label = { Text("CHAT", fontSize = 10.sp, fontWeight = FontWeight.Black) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonCyan,
-                selectedTextColor = NeonCyan,
-                unselectedIconColor = TextMuted,
-                unselectedTextColor = TextMuted,
-                indicatorColor = NeonPurpleDark
+@Composable
+private fun BottomNavItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    hasBadge: Boolean = false
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isSelected) ElectricMagenta else TextMuted,
+                modifier = Modifier.size(24.dp)
             )
-        )
-
-        NavigationBarItem(
-            selected = selectedTab == 4,
-            onClick = { onSelectTab(4) },
-            icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-            label = { Text("PROFILE", fontSize = 10.sp, fontWeight = FontWeight.Black) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonCyan,
-                selectedTextColor = NeonCyan,
-                unselectedIconColor = TextMuted,
-                unselectedTextColor = TextMuted,
-                indicatorColor = NeonPurpleDark
-            )
+            if (hasBadge) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(ElectricMagenta)
+                        .border(1.dp, DarkSurface, CircleShape)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+            color = if (isSelected) TextPrimary else TextMuted
         )
     }
 }

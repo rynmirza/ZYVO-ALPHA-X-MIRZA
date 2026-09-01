@@ -9,6 +9,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,12 +36,22 @@ fun GiftDialog(
     onDismiss: () -> Unit,
     onSendGift: (Gift, Int) -> Unit
 ) {
+    var selectedCategoryTab by remember { mutableStateOf(0) } // 0: All/Popular, 1: Luxury, 2: PK Boosters, 3: VIP Special
     var selectedGift by remember { mutableStateOf<Gift?>(PredefinedGifts.ALL_GIFTS.firstOrNull()) }
     var selectedMultiplier by remember { mutableStateOf(1) }
 
+    val displayedGifts = remember(selectedCategoryTab) {
+        when (selectedCategoryTab) {
+            1 -> PredefinedGifts.ALL_GIFTS.filter { it.rarity == GiftRarity.EPIC || it.rarity == GiftRarity.LEGENDARY }
+            2 -> PredefinedGifts.ALL_GIFTS.filter { it.coinCost in 50..1200 }
+            3 -> PredefinedGifts.ALL_GIFTS.filter { it.rarity == GiftRarity.LEGENDARY || it.coinCost >= 500 }
+            else -> PredefinedGifts.ALL_GIFTS
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = DarkSurface,
+        containerColor = DarkSurface.copy(alpha = 0.98f),
         scrimColor = OverlayDark,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
@@ -46,41 +59,67 @@ fun GiftDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp)
+                .padding(bottom = 28.dp)
         ) {
-            // Header Row: Title + Coin Balance
+            // Header Row: Tabs & Coin Balance
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "🎁", fontSize = 20.sp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Send Virtual Gift",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
+                // Category Tabs
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    listOf("🔥 Hot", "💎 Luxury", "⚔️ PK", "👑 VIP").forEachIndexed { index, title ->
+                        val isTabSelected = selectedCategoryTab == index
+                        Column(
+                            modifier = Modifier
+                                .clickable { selectedCategoryTab = index }
+                                .padding(vertical = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = title,
+                                fontSize = 13.sp,
+                                fontWeight = if (isTabSelected) FontWeight.Black else FontWeight.SemiBold,
+                                color = if (isTabSelected) TextPrimary else TextMuted
+                            )
+                            if (isTabSelected) {
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .width(16.dp)
+                                        .height(2.5.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(ElectricMagenta)
+                                )
+                            }
+                        }
+                    }
                 }
 
-                // Coin Balance Pill
+                // Balance Pill with quick recharge prompt
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .background(DarkCardElevated)
                         .border(1.dp, GoldAccent.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "🪙", fontSize = 14.sp)
+                        Text(text = "🪙", fontSize = 12.sp)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "$userCoinBalance Coins",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
+                            text = "$userCoinBalance",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
                             color = GoldAccent
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "+",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black,
+                            color = NeonCyan
                         )
                     }
                 }
@@ -88,18 +127,18 @@ fun GiftDialog(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Gift Grid
+            // Gift Grid (4 Columns Yeah! Live Kit Layout)
             LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
+                columns = GridCells.Fixed(4),
                 modifier = Modifier.height(240.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(PredefinedGifts.ALL_GIFTS) { gift ->
+                items(displayedGifts) { gift ->
                     val isSelected = selectedGift?.id == gift.id
                     val rarityColor = when (gift.rarity) {
                         GiftRarity.COMMON -> NeonCyan
-                        GiftRarity.RARE -> NeonPurpleLight
+                        GiftRarity.RARE -> CyberBlue
                         GiftRarity.EPIC -> ElectricMagenta
                         GiftRarity.LEGENDARY -> GoldAccent
                     }
@@ -107,22 +146,32 @@ fun GiftDialog(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(14.dp))
-                            .background(if (isSelected) DarkCardElevated else DarkCard)
+                            .background(
+                                if (isSelected) {
+                                    Brush.verticalGradient(
+                                        listOf(DarkCardElevated, ElectricMagenta.copy(alpha = 0.25f))
+                                    )
+                                } else {
+                                    Brush.linearGradient(
+                                        listOf(DarkCard, DarkCard)
+                                    )
+                                }
+                            )
                             .border(
                                 width = if (isSelected) 2.dp else 1.dp,
-                                color = if (isSelected) rarityColor else OverlayLight,
+                                brush = if (isSelected) Brush.horizontalGradient(listOf(ElectricMagenta, GoldAccent)) else Brush.linearGradient(listOf(OverlayLight, Color.Transparent)),
                                 shape = RoundedCornerShape(14.dp)
                             )
                             .clickable { selectedGift = gift }
-                            .padding(8.dp),
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(text = gift.iconEmoji, fontSize = 28.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = gift.name,
-                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary,
                                 maxLines = 1,
@@ -130,14 +179,13 @@ fun GiftDialog(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = "🪙", fontSize = 10.sp)
+                                Text(text = "🪙", fontSize = 9.sp)
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Text(
                                     text = "${gift.coinCost}",
-                                    style = MaterialTheme.typography.labelSmall,
                                     color = GoldAccent,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black
                                 )
                             }
                         }
@@ -147,34 +195,42 @@ fun GiftDialog(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Bottom Send Action Row with Multipliers
+            // Combo Multipliers & Send Action
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Multiplier selector: 1x, 5x, 10x, 99x
+                // Multipliers: 1x, 10x, 66x, 99x, 520x
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(1, 5, 10, 99).forEach { count ->
+                    listOf(
+                        1 to "1",
+                        10 to "10",
+                        66 to "66",
+                        99 to "99",
+                        520 to "520"
+                    ).forEach { (count, label) ->
                         val isMulSelected = selectedMultiplier == count
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isMulSelected) NeonPurple else DarkCardElevated)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isMulSelected) ElectricMagenta else DarkCardElevated)
+                                .border(1.dp, if (isMulSelected) GoldAccent else OverlayLight, RoundedCornerShape(10.dp))
                                 .clickable { selectedMultiplier = count }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                text = "${count}x",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
+                                text = "${label}x",
+                                fontSize = 11.sp,
+                                fontWeight = if (isMulSelected) FontWeight.Black else FontWeight.Bold,
                                 color = if (isMulSelected) TextPrimary else TextSecondary
                             )
                         }
                     }
                 }
 
-                // Send Button
+                // Send Button with animated gradient
+                val totalCost = (selectedGift?.coinCost ?: 0) * selectedMultiplier
                 Button(
                     onClick = {
                         val gift = selectedGift
@@ -183,16 +239,25 @@ fun GiftDialog(
                             onDismiss()
                         }
                     },
-                    modifier = Modifier.testTag("confirm_send_gift_button"),
+                    modifier = Modifier
+                        .testTag("confirm_send_gift_button")
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(ElectricMagenta, NeonPurple)
+                            )
+                        ),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = ElectricMagenta,
+                        containerColor = Color.Transparent,
                         contentColor = TextPrimary
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        text = "Send (${(selectedGift?.coinCost ?: 0) * selectedMultiplier} 🪙)",
-                        fontWeight = FontWeight.Bold
+                        text = "SEND ($totalCost 🪙)",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black
                     )
                 }
             }

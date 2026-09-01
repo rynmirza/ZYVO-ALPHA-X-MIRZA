@@ -140,38 +140,43 @@ Coming soon — full setup and integration guide!
 
 ---
 
-Made with by Ali Hamza❤️ for the future of live interaction.
+Made with ❤️ by **Founder Rayan Mirza** for the future of interactive live streaming.
 
+---
 
+## 👑 Ownership & Leadership
 
+**Zyvo Live** is proudly owned and founded by **Rayan Mirza**. All rights, branding, architecture, and platform assets are fully owned and directed by **Founder Rayan Mirza**.
+
+---
 
 ## Feel free to Contribute 😁🛠 Be it code or non-code 😉
 ## Steps to follow 📃
 
 ## Contents
 
-[1. Fork the project 🔪](https://github.com/alihamza1221/quickMeet/edit/master/README.md#1-fork-the-project-) <br>
-[2. Clone the forked repository 📥](https://github.com/alihamza1221/singleclub/edit/master/README.md#2-clone-the-forked-repository-)<br>
-[3. Let us Setup 🔧⚙️](https://github.com/alihamza1221/singleclub/edit/master/README.md#3-let-us-setup-%EF%B8%8F)<br>
-[4. Keep in sync always♻️ (best practice🤝🏻) ](https://github.com/alihamza1221/quickMeet/edit/master/README.md#4-keep-in-sync-always%EF%B8%8F-best-practice)<br>
-[5. Ready for the contribution 🌝](https://github.com/alihamza1221/quickMeet#5-ready-for-the-contribution-)<br>
-[6. Installing packages required 📦📥](https://github.com/alihamza1221/quickMeet#6-installing-packages-required-)<br>
+[1. Fork the project 🔪](https://github.com/zyvolive/zyvo/edit/master/README.md#1-fork-the-project-) <br>
+[2. Clone the forked repository 📥](https://github.com/zyvolive/zyvo/edit/master/README.md#2-clone-the-forked-repository-)<br>
+[3. Let us Setup 🔧⚙️](https://github.com/zyvolive/zyvo/edit/master/README.md#3-let-us-setup-%EF%B8%8F)<br>
+[4. Keep in sync always♻️ (best practice🤝🏻) ](https://github.com/zyvolive/zyvo/edit/master/README.md#4-keep-in-sync-always%EF%B8%8F-best-practice)<br>
+[5. Ready for the contribution 🌝](https://github.com/zyvolive/zyvo#5-ready-for-the-contribution-)<br>
+[6. Installing packages required 📦📥](https://github.com/zyvolive/zyvo#6-installing-packages-required-)<br>
 
 ### 1. Fork the project 🔪
 
-   [Fork Button](https://github.com/alihamza1221/quickMeet)
+   [Fork Button](https://github.com/zyvolive/zyvo)
 
 ### 2. Clone the forked repository 📥
 
   You need to clone (download) it to your local machine using below command in terminal
 ```bash
-   $ git clone https://github.com/Your_Username/quickMeet.git
+   $ git clone https://github.com/Your_Username/zyvo.git
 ```
 > This makes a local copy of the repository in your machine 📂
 
-  Once you have cloned the `Quick-Meet-SDK` repository in Github, move➡️ to that folder first using the change directory `cd` command on Linux/ Mac/ Windows
+  Once you have cloned the `zyvo` repository in Github, move➡️ to that folder first using the change directory `cd` command on Linux/ Mac/ Windows
 ```bash
-   $ cd Quick-Meet-SDK
+   $ cd zyvo
 ```
 
 ### 3. Let us Setup 🔧⚙️
@@ -181,13 +186,13 @@ Run the following commands to verify that your _local copy_ has a reference to y
 ```
 It should display the below output
 ```
-  origin  https://github.com/Your_Username/quickMeet.git (fetch)
-  origin  https://github.com/Your_Username/quickMeet.git (push)
+  origin  https://github.com/Your_Username/zyvo.git (fetch)
+  origin  https://github.com/Your_Username/zyvo.git (push)
 ```
 
-Now, let us add the reference to the original `quickMeet` repository using the below command 🔙
+Now, let us add the reference to the original `zyvo` repository using the below command 🔙
 ```bash
-  $ git remote add upstream https://github.com/quickMeet/quickMeet.git
+  $ git remote add upstream https://github.com/zyvolive/zyvo.git
 ```
 > The above command creates a new remote as `upstream`
 
@@ -197,10 +202,10 @@ To Verify the changes run the below command
 ```
 Output in console ☑️:
 ```
-  origin    https://github.com/Your_Username/quickMeet.git (fetch)
-  origin    https://github.com/Your_Username/quickMeet.git (push)
-  upstream  https://github.com/alihamza1221/quickMeet.git (fetch)
-  upstream  https://github.com/alihamza1221/quickMeet.git (push)
+  origin    https://github.com/Your_Username/zyvo.git (fetch)
+  origin    https://github.com/Your_Username/zyvo.git (push)
+  upstream  https://github.com/zyvolive/zyvo.git (fetch)
+  upstream  https://github.com/zyvolive/zyvo.git (push)
 ```
 
 ### 4. Keep in sync always♻️ (best practice🤝🏻) 
@@ -216,12 +221,12 @@ It is a better practice to keep the `local copy` in sync with the `original repo
   # Reset the local master branch to match the upstream repository's master branch
   $ git reset --hard upstream/master
 
-  # Push changes to your forked quickMeet repo
+  # Push changes to your forked zyvo repo
   $ git push origin master
 ```
 
 ### 5. Ready for the contribution 🌝
-Once you are done with the above steps, you are ready to contribute to the `QuickMeet` project code. Check out the `issues` tab of the `original repository` and solve them. Once you are done with your changes, submit your efforts with a `pull request`
+Once you are done with the above steps, you are ready to contribute to the `Zyvo Live` project code. Check out the `issues` tab of the `original repository` and solve them. Once you are done with your changes, submit your efforts with a `pull request`
 
 ## Hold on! Instructions are not done yet 🌚
 
@@ -233,12 +238,12 @@ To install the required packages run the below command
 ```
 ## Help us improve the project better 📈🤗
 
-Please discuss your concerns with [Ali Hamza](https://alilive.xyz/) before creating a new issue. 😉
+Please discuss your questions, features, or concerns directly with **Founder Rayan Mirza** before creating a new issue. 😉
 
 _Please `STAR`⭐️ the repository if you like the content and code_**😁
 
 _Also enable the `WATCH`👁 button to keep watching the updates on the repository_**😉
 
-💯💻🧑‍💻👩‍💻 Happy Contributing 👩‍💻🧑‍💻💻💯
+💯💻🧑‍💻👩‍💻 Happy Contributing with Founder Rayan Mirza 👩‍💻🧑‍💻💻💯
 
 ![zyvo-logo](assets/zyvo_logo.jpg)
