@@ -695,7 +695,7 @@ fun UserProfileSheet(
                             fontWeight = FontWeight.Black,
                             color = GoldAccent
                         )
-                        Text(text = "💎 Wealth", fontSize = 10.sp, color = GoldAccent.copy(alpha = 0.8f))
+                        Text(text = "🔮 Gems", fontSize = 10.sp, color = GoldAccent.copy(alpha = 0.8f))
                     }
                 }
 
@@ -1108,7 +1108,7 @@ fun UserProfileSheet(
                                 Triple("💎 VIP 9 Supreme Tier", "Unlocks golden broadcast auras", "Legendary"),
                                 Triple("⭐ Level 99 Hall of Fame", "Maximum platform experience tier", "Mythic"),
                                 Triple("⚔️ PK Arena Grandmaster", "Over 500+ PK Arena victories", "Legendary"),
-                                Triple("💖 Millionaire Gifter", "Contributed over 10M+ diamonds", "Epic"),
+                                Triple("💖 Millionaire Gifter", "Contributed over 10M+ Gems", "Epic"),
                                 Triple("🎙️ Top 1% Broadcaster", "Streamed over 1,000+ live hours", "Epic"),
                                 Triple("🕊️ Peace Ambassador", "Community guardian & mentor", "Rare")
                             )
@@ -1166,10 +1166,10 @@ fun UserProfileSheet(
                             )
 
                             val supporters = listOf(
-                                Triple("1. King Of Kings", "12.5M Diamonds", "👑 VIP 9"),
-                                Triple("2. Drama Queen", "8.9M Diamonds", "🦁 SVIP 7"),
-                                Triple("3. DJ Kai", "5.4M Diamonds", "🎧 VIP 5"),
-                                Triple("4. Pixel Queen", "3.2M Diamonds", "👾 VIP 3")
+                                Triple("1. King Of Kings", "12.5M Gems", "👑 VIP 9"),
+                                Triple("2. Drama Queen", "8.9M Gems", "🦁 SVIP 7"),
+                                Triple("3. DJ Kai", "5.4M Gems", "🎧 VIP 5"),
+                                Triple("4. Pixel Queen", "3.2M Gems", "👾 VIP 3")
                             )
 
                             supporters.forEachIndexed { index, (name, diamonds, vip) ->
@@ -1356,7 +1356,7 @@ fun UserProfileSheet(
                         val quickGifts = listOf(
                             Triple("👑 Royal Crown", "9,999 🪙", "👑"),
                             Triple("🚀 Super Rocket", "4,999 🪙", "🚀"),
-                            Triple("💎 Diamond Ring", "1,999 🪙", "💎"),
+                            Triple("🔮 Luxury Gem Ring", "1,999 🪙", "🔮"),
                             Triple("🌹 Love Rose", "99 🪙", "🌹")
                         )
 

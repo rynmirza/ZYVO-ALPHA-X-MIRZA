@@ -54,7 +54,7 @@ fun RankingsScreen(
                 avatarEmoji = "👑",
                 avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
                 scorePoints = 99999999,
-                metricLabel = "Diamonds",
+                metricLabel = "Gems",
                 vipTier = VipTier.VIP_9,
                 userLevel = 99,
                 isLiveNow = true,
@@ -70,7 +70,7 @@ fun RankingsScreen(
                 avatarEmoji = "🦁",
                 avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
                 scorePoints = 88888888,
-                metricLabel = "Diamonds",
+                metricLabel = "Gems",
                 vipTier = VipTier.VIP_9,
                 userLevel = 99,
                 isLiveNow = true,
@@ -86,18 +86,18 @@ fun RankingsScreen(
                 avatarEmoji = "👸",
                 avatarUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
                 scorePoints = 78500000,
-                metricLabel = "Diamonds",
+                metricLabel = "Gems",
                 vipTier = VipTier.SVIP_7,
                 userLevel = 89,
                 isLiveNow = true,
                 isFollowing = true,
                 executiveRole = "TOP HOST QUEEN"
             ),
-            LeaderboardItem(4, "pixel_queen", "pixel_queen", "Elena 'PixelQueen'", "🎮", null, 690000, "Diamonds", VipTier.SVIP_2, 35, true, true),
-            LeaderboardItem(4, "apex_arenas", "apex_arenas", "Apex Arenas", "⚔️", null, 520000, "Diamonds", VipTier.SVIP_1, 31, true, false),
-            LeaderboardItem(5, "dj_kai", "kai_sterling", "Kai Sterling", "🎧", null, 284000, "Diamonds", VipTier.VIP_5, 28, true, true),
-            LeaderboardItem(6, "marcus_voice", "marcus_vance", "Marcus Vance", "☕", null, 145000, "Diamonds", VipTier.VIP_2, 22, true, true),
-            LeaderboardItem(7, "user_me", "alex_vance", "Alex Vance (You)", "🚀", null, 34250, "Diamonds", VipTier.VIP_3, 14, false, false)
+            LeaderboardItem(4, "pixel_queen", "pixel_queen", "Elena 'PixelQueen'", "🎮", null, 690000, "Gems", VipTier.SVIP_2, 35, true, true),
+            LeaderboardItem(4, "apex_arenas", "apex_arenas", "Apex Arenas", "⚔️", null, 520000, "Gems", VipTier.SVIP_1, 31, true, false),
+            LeaderboardItem(5, "dj_kai", "kai_sterling", "Kai Sterling", "🎧", null, 284000, "Gems", VipTier.VIP_5, 28, true, true),
+            LeaderboardItem(6, "marcus_voice", "marcus_vance", "Marcus Vance", "☕", null, 145000, "Gems", VipTier.VIP_2, 22, true, true),
+            LeaderboardItem(7, "user_me", "alex_vance", "Alex Vance (You)", "🚀", null, 34250, "Gems", VipTier.VIP_3, 14, false, false)
         )
     }
 

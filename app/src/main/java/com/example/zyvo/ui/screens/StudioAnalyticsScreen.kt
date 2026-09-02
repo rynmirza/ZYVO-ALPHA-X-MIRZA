@@ -109,7 +109,7 @@ fun StudioAnalyticsScreen(
                         icon = Icons.Default.Diamond,
                         iconTint = GoldAccent,
                         title = "48,920",
-                        subtitle = "Diamonds Earned"
+                        subtitle = "Gems Earned"
                     )
                     MetricBox(
                         modifier = Modifier.weight(1f),

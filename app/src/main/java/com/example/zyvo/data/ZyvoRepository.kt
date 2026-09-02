@@ -434,8 +434,8 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
 
         val alphaRoom = LiveRoom(
             id = "room_alpha_888",
-            title = "⚔️ CO-FOUNDER ALPHA RAJPOOT | Zyvo Executive PK Battle & 10M Diamond Drop",
-            description = "High stakes Executive Battle Stage! Dropping millions of diamonds and golden gifts for the community.",
+            title = "⚔️ CO-FOUNDER ALPHA RAJPOOT | Zyvo Executive PK Battle & 10M Gem Drop",
+            description = "High stakes Executive Battle Stage! Dropping millions of Gems and golden gifts for the community.",
             creatorIdentity = "co_founder_alpha",
             hostName = "ALPHA RAJPOOT (CO-FOUNDER)",
             hostAvatar = "🦁",
@@ -460,7 +460,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
 
         val ansharahRoom = LiveRoom(
             id = "room_ansharah_777",
-            title = "💎 ANSHARAH GAHNI | Top Host Queen Live & 50M Diamond Gala 👑",
+            title = "🔮 ANSHARAH GAHNI | Top Host Queen Live & 50M Gem Gala 👑",
             description = "Welcome to Ansharah Gahni's Official Live Stage! Level 89 Top Host • SVIP 7 • Dropping massive rewards with Founder & Co-Founder backing!",
             creatorIdentity = "ansharah_gahni",
             hostName = "ANSHARAH GAHNI",
@@ -648,7 +648,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             ),
             "room_ansharah_777" to listOf(
                 ChatMessage("ca1", "system", "ZYVO HQ", senderAvatar = "💎", text = "👑 WELCOME TO TOP HOST ANSHARAH GAHNI OFFICIAL LIVE! SVIP 7 ACTIVE.", type = MessageType.SYSTEM),
-                ChatMessage("ca2", "ceo_rayan", "RAYAN MIRZA (CEO)", "👑", "Welcome Ansharah to the Top Host Spotlight! 💎 Sent 100,000 Diamonds!"),
+                ChatMessage("ca2", "ceo_rayan", "RAYAN MIRZA (CEO)", "👑", "Welcome Ansharah to the Top Host Spotlight! 🔮 Sent 100,000 Gems!"),
                 ChatMessage("ca3", "co_founder_alpha", "ALPHA RAJPOOT", "🦁", "Keep shining Queen Ansharah! Top Host power! 🔥"),
                 ChatMessage("ca4", "vip_fan", "CrownPrince_99", "💎", "Sent 10x Galactic Dragon Palace to Queen Ansharah! 👸")
             )

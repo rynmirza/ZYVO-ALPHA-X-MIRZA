@@ -75,6 +75,7 @@ fun ExecutiveAvatar(
     vipTier: VipTier = VipTier.VIP_9,
     showCrown: Boolean = true,
     showLevelBadge: Boolean = true,
+    accentColor: Color? = null,
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "executive_aura")
@@ -111,14 +112,15 @@ fun ExecutiveAvatar(
         label = "aura_alpha"
     )
 
+    val primaryColor = accentColor ?: if (vipTier == VipTier.VIP_9) GoldAccent else NeonCyan
+    val secondaryColor = if (accentColor != null) accentColor.copy(alpha = 0.5f) else Color(0xFFFF007A)
     val executiveBrush = Brush.sweepGradient(
         colors = listOf(
-            GoldAccent,
-            Color(0xFFFF007A),
-            NeonCyan,
+            primaryColor,
+            secondaryColor,
             Color(0xFFFFD700),
-            Color(0xFFFF6B00),
-            GoldAccent
+            secondaryColor,
+            primaryColor
         )
     )
 
@@ -198,7 +200,7 @@ fun ExecutiveAvatar(
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = "👑 VIP 9",
+                    text = "👑 SVIP 9",
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.Black
@@ -403,7 +405,7 @@ fun ExecutiveGrandBanner(
                 avatarUrl = ceoProfile?.avatarUrl ?: "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
                 avatarEmoji = "👑",
                 phoneNumber = "+44 7868 713315",
-                diamondsText = "99.9M Diamonds",
+                gemsText = "99.9M Gems",
                 followersText = "9.8M Fans",
                 isCeo = true,
                 onCardClick = { onOpenProfile("ceo_rayan") },
@@ -418,7 +420,7 @@ fun ExecutiveGrandBanner(
                 avatarUrl = coFounderProfile?.avatarUrl ?: "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
                 avatarEmoji = "🦁",
                 phoneNumber = "+447366 387620",
-                diamondsText = "88.8M Diamonds",
+                gemsText = "88.8M Gems",
                 followersText = "8.4M Fans",
                 isCeo = false,
                 onCardClick = { onOpenProfile("co_founder_alpha") },
@@ -439,7 +441,7 @@ fun ExecutiveMiniCard(
     avatarUrl: String,
     avatarEmoji: String,
     phoneNumber: String,
-    diamondsText: String,
+    gemsText: String,
     followersText: String,
     isCeo: Boolean,
     onCardClick: () -> Unit,
@@ -508,7 +510,7 @@ fun ExecutiveMiniCard(
             )
 
             Text(
-                text = diamondsText,
+                text = gemsText,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 color = GoldAccent

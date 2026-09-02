@@ -205,7 +205,7 @@ fun UserProfileScreen(
                     coinBalance = if (coinBalance > 0) coinBalance else 125680,
                     usdValue = "125.68",
                     coinsCount = if (coinBalance > 0) coinBalance else 125680,
-                    diamondsCount = 12568,
+                    gemsCount = 12568,
                     beansCount = if (beansBalance > 0) beansBalance else 85230,
                     medalsCount = 32,
                     badgesCount = 68,
@@ -1164,7 +1164,7 @@ private fun WalletAndAssetsSection(
     coinBalance: Int,
     usdValue: String,
     coinsCount: Int,
-    diamondsCount: Int,
+    gemsCount: Int,
     beansCount: Int,
     medalsCount: Int,
     badgesCount: Int,
@@ -1236,7 +1236,7 @@ private fun WalletAndAssetsSection(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Coins, Diamonds, Beans Sub-row
+                // Coins, Gems, Beans Sub-row
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1249,7 +1249,7 @@ private fun WalletAndAssetsSection(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         AssetSubItem(icon = "🪙", label = "Coins", count = "%,d".format(coinsCount))
-                        AssetSubItem(icon = "💎", label = "Diamonds", count = "%,d".format(diamondsCount))
+                        AssetSubItem(icon = "🔮", label = "Gems", count = "%,d".format(gemsCount))
                         AssetSubItem(icon = "🔮", label = "Beans", count = "%,d".format(beansCount))
                     }
                 }

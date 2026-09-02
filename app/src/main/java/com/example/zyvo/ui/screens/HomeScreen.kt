@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -25,11 +26,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -93,7 +96,8 @@ fun HomeScreen(
     onGoLiveClick: () -> Unit,
     onOpenAnalyticsClick: () -> Unit,
     onOpenUserDetail: ((String) -> Unit)? = null,
-    onNavigateToLive: (() -> Unit)? = null
+    onNavigateToLive: (() -> Unit)? = null,
+    onOpenDm: ((String) -> Unit)? = null
 ) {
     var showExecutiveSheet by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
@@ -112,6 +116,7 @@ fun HomeScreen(
             screenTitle = "NEW CREATOR ROOMS",
             ceoProfile = ceoProfile,
             coFounderProfile = coFounderProfile,
+            ansharahProfile = ansharahProfile,
             onBack = { showNewExplorer = false },
             onRoomClick = { room ->
                 showNewExplorer = false
@@ -122,7 +127,8 @@ fun HomeScreen(
                 onOpenUserDetail?.invoke(uid)
             },
             onOpenAnalyticsClick = onOpenAnalyticsClick,
-            onGoLiveClick = onGoLiveClick
+            onGoLiveClick = onGoLiveClick,
+            onOpenDm = onOpenDm
         )
         return
     }
@@ -135,6 +141,7 @@ fun HomeScreen(
             screenTitle = "AUDIO & MULTI ROOMS",
             ceoProfile = ceoProfile,
             coFounderProfile = coFounderProfile,
+            ansharahProfile = ansharahProfile,
             onBack = { showAudioExplorer = false },
             onRoomClick = { room ->
                 showAudioExplorer = false
@@ -145,7 +152,8 @@ fun HomeScreen(
                 onOpenUserDetail?.invoke(uid)
             },
             onOpenAnalyticsClick = onOpenAnalyticsClick,
-            onGoLiveClick = onGoLiveClick
+            onGoLiveClick = onGoLiveClick,
+            onOpenDm = onOpenDm
         )
         return
     }
@@ -158,6 +166,7 @@ fun HomeScreen(
             screenTitle = "PK BATTLE ARENAS",
             ceoProfile = ceoProfile,
             coFounderProfile = coFounderProfile,
+            ansharahProfile = ansharahProfile,
             onBack = { showPkExplorer = false },
             onRoomClick = { room ->
                 showPkExplorer = false
@@ -168,7 +177,8 @@ fun HomeScreen(
                 onOpenUserDetail?.invoke(uid)
             },
             onOpenAnalyticsClick = onOpenAnalyticsClick,
-            onGoLiveClick = onGoLiveClick
+            onGoLiveClick = onGoLiveClick,
+            onOpenDm = onOpenDm
         )
         return
     }
@@ -181,6 +191,7 @@ fun HomeScreen(
             screenTitle = "TOP LIVE ROOMS",
             ceoProfile = ceoProfile,
             coFounderProfile = coFounderProfile,
+            ansharahProfile = ansharahProfile,
             onBack = { showTopLiveExplorer = false },
             onRoomClick = { room ->
                 showTopLiveExplorer = false
@@ -191,7 +202,8 @@ fun HomeScreen(
                 onOpenUserDetail?.invoke(uid)
             },
             onOpenAnalyticsClick = onOpenAnalyticsClick,
-            onGoLiveClick = onGoLiveClick
+            onGoLiveClick = onGoLiveClick,
+            onOpenDm = onOpenDm
         )
         return
     }
@@ -452,6 +464,7 @@ fun HomeScreen(
         ExecutiveFoundersModal(
             ceoProfile = ceoProfile,
             coFounderProfile = coFounderProfile,
+            ansharahProfile = ansharahProfile,
             onDismiss = { showExecutiveSheet = false },
             onOpenProfile = { userId ->
                 showExecutiveSheet = false
@@ -465,6 +478,10 @@ fun HomeScreen(
                 } else {
                     onGoLiveClick()
                 }
+            },
+            onOpenChat = { userId ->
+                showExecutiveSheet = false
+                onOpenDm?.invoke(userId)
             }
         )
     }
@@ -1889,9 +1906,11 @@ fun LiveRoomCard(
 fun ExecutiveFoundersModal(
     ceoProfile: UserProfile?,
     coFounderProfile: UserProfile?,
+    ansharahProfile: UserProfile? = null,
     onDismiss: () -> Unit,
     onOpenProfile: (String) -> Unit,
-    onOpenLiveRoom: (String) -> Unit
+    onOpenLiveRoom: (String) -> Unit,
+    onOpenChat: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1916,6 +1935,7 @@ fun ExecutiveFoundersModal(
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp)
                 .padding(bottom = 32.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             // Header with Crown & Title
             Row(
@@ -1963,16 +1983,17 @@ fun ExecutiveFoundersModal(
             // 1. FOUNDER & CEO CARD: RAYAN MIRZA
             FounderSpotlightCard(
                 name = "RAYAN MIRZA",
-                roleTitle = "FOUNDER & CEO",
+                roleTitle = "FOUNDER & CHIEF EXECUTIVE OFFICER",
                 avatarUrl = ceoProfile?.avatarUrl ?: "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
                 avatarEmoji = "👑",
                 phoneNumber = "+44 7868 713315",
-                diamondsText = "99.9M Diamonds",
+                gemsText = "99.9M Gems",
                 followersText = "9.8M Fans",
-                bioText = "Supreme Sovereign • Official Creator Backing & Platform Management",
+                bioText = "Managing Director of Global Operations. Directing executive platform governance, creator backing, and strategic expansion.",
                 isCeo = true,
                 onViewProfile = { onOpenProfile("ceo_rayan") },
-                onJoinLive = { onOpenLiveRoom("room_ceo_999") }
+                onJoinLive = { onOpenLiveRoom("ceo_rayan_room") },
+                onOpenChat = { onOpenChat?.invoke("ceo_rayan") }
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -1980,16 +2001,35 @@ fun ExecutiveFoundersModal(
             // 2. CO-FOUNDER CARD: ALPHA RAJPOOT
             FounderSpotlightCard(
                 name = "ALPHA RAJPOOT",
-                roleTitle = "CO-FOUNDER",
+                roleTitle = "CO-FOUNDER & CHIEF OPERATING OFFICER",
                 avatarUrl = coFounderProfile?.avatarUrl ?: "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
                 avatarEmoji = "🦁",
                 phoneNumber = "+447366 387620",
-                diamondsText = "88.8M Diamonds",
+                gemsText = "88.8M Gems",
                 followersText = "8.4M Fans",
-                bioText = "Global Operations Commander • Strategic Growth & PK Arena",
+                bioText = "Director of Global Expansion. Managing strategic partnerships, PK Arena operations, and regional ecosystem development.",
                 isCeo = false,
                 onViewProfile = { onOpenProfile("co_founder_alpha") },
-                onJoinLive = { onOpenLiveRoom("room_alpha_888") }
+                onJoinLive = { onOpenLiveRoom("co_founder_alpha_room") },
+                onOpenChat = { onOpenChat?.invoke("co_founder_alpha") }
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 3. TOP HOST & FIRST HOST CARD: ANSHARAH GAHNI
+            FounderSpotlightCard(
+                name = "ANSHARAH GAHNI",
+                roleTitle = "TOP HOST & PLATFORM AMBASSADOR",
+                avatarUrl = ansharahProfile?.avatarUrl ?: "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
+                avatarEmoji = "👸",
+                phoneNumber = "+44 7868 713315",
+                gemsText = "78.5M Gems",
+                followersText = "7.6M Fans",
+                bioText = "✨ Elite Creator & Zyvo Global Icon 👑 Level 89 Superstar • SVIP 9 • Celebrated as the very first official host of Zyvo Live, inspiring millions daily 💖",
+                isCeo = false,
+                onViewProfile = { onOpenProfile("ansharah_gahni") },
+                onJoinLive = { onOpenLiveRoom("ansharah_gahni_room_1") },
+                onOpenChat = { onOpenChat?.invoke("ansharah_gahni") }
             )
         }
     }
@@ -2002,26 +2042,81 @@ fun FounderSpotlightCard(
     avatarUrl: String,
     avatarEmoji: String,
     phoneNumber: String,
-    diamondsText: String,
+    gemsText: String,
     followersText: String,
     bioText: String,
     isCeo: Boolean,
     onViewProfile: () -> Unit,
-    onJoinLive: () -> Unit
+    onJoinLive: () -> Unit,
+    onOpenChat: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val accentColor = if (isCeo) GoldAccent else NeonCyan
+    val accentColor = if (isCeo) GoldAccent else if (name == "ANSHARAH GAHNI") Color(0xFFFF007A) else NeonCyan
     val borderGradient = if (isCeo) {
         listOf(GoldAccent, Color(0xFFFF007A), GoldAccent)
+    } else if (name == "ANSHARAH GAHNI") {
+        listOf(Color(0xFFFF007A), Color(0xFFE040FB), Color(0xFFFF007A))
     } else {
         listOf(NeonCyan, NeonPurple, NeonCyan)
     }
+
+    // Dynamic, smooth continuous rotating/shifting border gradient animation
+    val infiniteTransition = rememberInfiniteTransition(label = "borderTransition")
+    val gradientShift by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1500f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "gradientShift"
+    )
+
+    val animatedBrush = Brush.linearGradient(
+        colors = borderGradient,
+        start = Offset(gradientShift, 0f),
+        end = Offset(gradientShift + 400f, 400f),
+        tileMode = TileMode.Mirror
+    )
+
+    // Dynamic shimmering metallic glint cover sweep animation
+    val shimmerTransition = rememberInfiniteTransition(label = "cardShimmer")
+    val shimmerProgress by shimmerTransition.animateFloat(
+        initialValue = -0.5f,
+        targetValue = 1.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmerProgress"
+    )
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .border(1.5.dp, Brush.horizontalGradient(borderGradient), RoundedCornerShape(20.dp)),
+            .border(1.5.dp, animatedBrush, RoundedCornerShape(20.dp))
+            .drawWithContent {
+                drawContent()
+                val width = size.width
+                val height = size.height
+                val xPosition = width * shimmerProgress
+                val shimmerWidth = 140.dp.toPx()
+                
+                val sweepBrush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        Color.White.copy(alpha = 0.0f),
+                        Color.White.copy(alpha = 0.05f),
+                        Color.White.copy(alpha = 0.16f),
+                        Color.White.copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    start = Offset(xPosition, 0f),
+                    end = Offset(xPosition + shimmerWidth, height)
+                )
+                drawRect(brush = sweepBrush)
+            },
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1D0E33))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -2030,15 +2125,15 @@ fun FounderSpotlightCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Executive Avatar
-                ExecutiveAvatar(
-                    avatarUrl = avatarUrl,
-                    avatarEmoji = avatarEmoji,
-                    size = 64.dp,
-                    userLevel = 99,
-                    vipTier = VipTier.VIP_9,
-                    showCrown = true,
-                    showLevelBadge = true
+                // Use the gorgeous AnimatedHostAvatar (popular host frames)
+                // This has the premium custom crown and colored borders, but has NO level/vip badges on it
+                AnimatedHostAvatar(
+                    imageUrl = avatarUrl,
+                    gender = if (name == "ANSHARAH GAHNI") "Female" else "Male",
+                    name = name,
+                    size = 72.dp,
+                    isLive = false,
+                    onClick = onViewProfile
                 )
 
                 Spacer(modifier = Modifier.width(14.dp))
@@ -2051,25 +2146,77 @@ fun FounderSpotlightCard(
                     ) {
                         Text(
                             text = name,
-                            fontSize = 16.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Black,
                             color = Color.White
                         )
                         Icon(
                             imageVector = Icons.Default.Verified,
                             contentDescription = "Verified",
-                            tint = getVerifiedTickColor("Male", name),
+                            tint = getVerifiedTickColor(if (name == "ANSHARAH GAHNI") "Female" else "Male", name),
                             modifier = Modifier.size(16.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Sleek, highly professional inline badges for SVIP and Level
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // SVIP 9 Badge
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(GoldAccent, Color(0xFFFF9800), GoldAccent)
+                                    )
+                                )
+                                .border(0.5.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "SVIP 9",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.Black
+                            )
+                        }
+
+                        // Level Badge
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(Color(0xFF7B1FA2), Color(0xFFFF007A))
+                                    )
+                                )
+                                .border(0.5.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Lv.${if (name == "ANSHARAH GAHNI") 89 else 99}",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     // Role Badge
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (isCeo) Color(0xFF5A3900) else Color(0xFF00445E))
+                            .background(
+                                if (isCeo) Color(0xFF5A3900)
+                                else if (name == "ANSHARAH GAHNI") Color(0xFF4A0E2E)
+                                else Color(0xFF00445E)
+                            )
                             .border(1.dp, accentColor, RoundedCornerShape(6.dp))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
@@ -2084,7 +2231,7 @@ fun FounderSpotlightCard(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = "$diamondsText • $followersText",
+                        text = "$gemsText • $followersText",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = GoldAccent
@@ -2103,28 +2250,48 @@ fun FounderSpotlightCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Action Buttons: WhatsApp Direct, View Profile, Live Room
+            // Action Buttons: WhatsApp Direct (or Live), View Profile, Chat
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // WhatsApp Official Button
-                Button(
-                    onClick = { openWhatsAppChat(context, phoneNumber, name) },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                    modifier = Modifier.height(36.dp)
-                ) {
-                    Text(text = "💬", fontSize = 13.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "WhatsApp",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                if (name == "ANSHARAH GAHNI") {
+                    // "🔴 Live" button (Only for Ansharah Ghani - instead of WhatsApp)
+                    Button(
+                        onClick = onJoinLive,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0055)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text(text = "🔴", fontSize = 11.sp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Live",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                } else {
+                    // WhatsApp Official Button (Rayan & Alpha only)
+                    Button(
+                        onClick = { openWhatsAppChat(context, phoneNumber, name) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text(text = "💬", fontSize = 13.sp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "WhatsApp",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
 
                 // View Profile Button
@@ -2145,21 +2312,21 @@ fun FounderSpotlightCard(
                     )
                 }
 
-                // Live Button
+                // Chat Button
                 Button(
-                    onClick = onJoinLive,
+                    onClick = { onOpenChat?.invoke() ?: onJoinLive() },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isCeo) LiveRed else ElectricMagenta
+                        containerColor = if (isCeo) Color(0xFFFF9800) else if (name == "ANSHARAH GAHNI") Color(0xFFFF007A) else Color(0xFF00E5FF)
                     ),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.height(36.dp)
                 ) {
                     Text(
-                        text = "🔴 Live",
+                        text = "💬 Chat",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color.White
+                        color = Color.Black
                     )
                 }
             }

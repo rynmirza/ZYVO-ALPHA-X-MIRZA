@@ -223,7 +223,8 @@ fun ZyvoApp(
                         onGoLiveClick = { viewModel.setShowCreateRoomSheet(true) },
                         onOpenAnalyticsClick = { activeSubView = "rankings" },
                         onOpenUserDetail = { userId -> viewModel.openUserProfile(userId) },
-                        onNavigateToLive = { viewModel.setSelectedTab(1) }
+                        onNavigateToLive = { viewModel.setSelectedTab(1) },
+                        onOpenDm = { userId -> viewModel.openDmChat(userId) }
                     )
                     1 -> FollowingScreen(
                         followedRooms = followedRooms,
@@ -259,11 +260,16 @@ fun ZyvoApp(
                         selectedCategory = selectedCategory,
                         searchQuery = searchQuery,
                         coinBalance = userCoinBalance,
+                        ceoProfile = userProfiles["ceo_rayan"],
+                        coFounderProfile = userProfiles["co_founder_alpha"],
+                        ansharahProfile = userProfiles["ansharah_gahni"],
                         onSelectCategory = { viewModel.setSelectedCategory(it) },
                         onSearchQueryChange = { viewModel.setSearchQuery(it) },
                         onRoomClick = { room -> viewModel.joinRoom(room.id) },
                         onGoLiveClick = { viewModel.setShowCreateRoomSheet(true) },
-                        onOpenAnalyticsClick = { activeSubView = "rankings" }
+                        onOpenAnalyticsClick = { activeSubView = "rankings" },
+                        onOpenUserDetail = { userId -> viewModel.openUserProfile(userId) },
+                        onOpenDm = { userId -> viewModel.openDmChat(userId) }
                     )
                 }
             }
@@ -334,8 +340,8 @@ fun ZyvoApp(
             }
 
             if (activeDmPeerUserId != null) {
-                val peerProfile = viewModel.userProfiles.value[activeDmPeerUserId]
-                    ?: viewModel.currentUserProfile.value
+                val peerProfile = userProfiles[activeDmPeerUserId]
+                    ?: currentUserProfile
                 val peerMessages = directMessages[activeDmPeerUserId] ?: emptyList()
 
                 DirectMessageDialog(

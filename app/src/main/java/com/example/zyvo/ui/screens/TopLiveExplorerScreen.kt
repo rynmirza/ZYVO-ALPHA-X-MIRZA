@@ -47,11 +47,13 @@ fun TopLiveExplorerScreen(
     screenTitle: String = "TOP LIVE ROOMS",
     ceoProfile: UserProfile? = null,
     coFounderProfile: UserProfile? = null,
+    ansharahProfile: UserProfile? = null,
     onBack: () -> Unit,
     onRoomClick: (LiveRoom) -> Unit,
     onOpenUserDetail: ((String) -> Unit)? = null,
     onOpenAnalyticsClick: (() -> Unit)? = null,
-    onGoLiveClick: (() -> Unit)? = null
+    onGoLiveClick: (() -> Unit)? = null,
+    onOpenDm: ((String) -> Unit)? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilterCategory by remember(initialCategory) { mutableStateOf(initialCategory ?: "All") }
@@ -263,6 +265,7 @@ fun TopLiveExplorerScreen(
         ExecutiveFoundersModal(
             ceoProfile = ceoProfile,
             coFounderProfile = coFounderProfile,
+            ansharahProfile = ansharahProfile,
             onDismiss = { showExecutiveSheet = false },
             onOpenProfile = { userId ->
                 showExecutiveSheet = false
@@ -276,6 +279,10 @@ fun TopLiveExplorerScreen(
                 } else {
                     onGoLiveClick?.invoke()
                 }
+            },
+            onOpenChat = { userId ->
+                showExecutiveSheet = false
+                onOpenDm?.invoke(userId)
             }
         )
     }

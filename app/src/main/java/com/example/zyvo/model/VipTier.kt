@@ -22,8 +22,8 @@ enum class VipTier(
     SVIP_1("SVIP 1", "🌟 SVIP 1", 6, true, 8000, "🐉 Summons Golden Dragon Entrance", "#FFD700", "#FFD700"),
     SVIP_2("SVIP 2", "🌟 SVIP 2", 7, true, 15000, "👑 Galaxy Coronation Entrance", "#00F5D4", "#00F5D4"),
     SVIP_3("SVIP 3", "🌟 SVIP 3", 8, true, 30000, "🌌 Cosmic Supernova Entrance", "#FF0055", "#FF0055"),
-    SVIP_7("SVIP 7", "💎 SVIP 7 QUEEN", 7, true, 75000, "👑 Celestial Queen Phoenix & Diamond Palace Entrance", "#FF007A", "#FF00AA"),
-    VIP_9("VIP 9", "👑 VIP 9 SUPREME", 9, true, 100000, "👑 Supreme Sovereign Cosmic Emperor Dragon Mount", "#FFD700", "#FF007A")
+    SVIP_7("SVIP 7", "💎 SVIP 7 QUEEN", 7, true, 75000, "👑 Celestial Queen Phoenix & Gem Palace Entrance", "#FF007A", "#FF00AA"),
+    VIP_9("SVIP 9", "👑 SVIP 9 SUPREME", 9, true, 100000, "👑 Supreme Sovereign Cosmic Emperor Dragon Mount", "#FFD700", "#FF007A")
 }
 
 @Serializable

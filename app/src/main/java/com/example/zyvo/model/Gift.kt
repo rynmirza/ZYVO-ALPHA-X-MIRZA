@@ -24,7 +24,7 @@ object PredefinedGifts {
         Gift("gift_rose", "Neon Rose", "🌹", 5, "rose_shower", GiftRarity.COMMON),
         Gift("gift_heart", "Heart Flare", "💖", 20, "heart_burst", GiftRarity.COMMON),
         Gift("gift_confetti", "Party Popper", "🎉", 50, "confetti_blast", GiftRarity.COMMON),
-        Gift("gift_diamond", "Crystal Gem", "💎", 100, "diamond_sparkle", GiftRarity.RARE),
+        Gift("gift_gem", "Crystal Gem", "🔮", 100, "gem_sparkle", GiftRarity.RARE),
         Gift("gift_fire", "Supernova", "🔥", 250, "fire_wave", GiftRarity.RARE),
         Gift("gift_rocket", "Hyper Rocket", "🚀", 500, "rocket_launch", GiftRarity.EPIC),
         Gift("gift_car", "Cyber Car", "🏎️", 1200, "supercar_drift", GiftRarity.EPIC),

@@ -256,15 +256,6 @@ fun AnimatedHostAvatar(
                 val center = Offset(size.toPx() / 2, size.toPx() / 2)
                 val ringR = size.toPx() * 0.38f
 
-                // Top crown sparkle
-                val sparkX = center.x + sin(Math.toRadians(30.0)).toFloat() * ringR
-                val sparkY = center.y - cos(Math.toRadians(30.0)).toFloat() * ringR - (10 * density)
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.9f),
-                    radius = 3.dp.toPx() * sparkleScale,
-                    center = Offset(sparkX, sparkY)
-                )
-
                 // Bottom jewel sparkle
                 val sparkX2 = center.x - sin(Math.toRadians(150.0)).toFloat() * ringR
                 val sparkY2 = center.y + cos(Math.toRadians(150.0)).toFloat() * ringR + (8 * density)
@@ -633,8 +624,8 @@ fun HostProfileHeader(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "💎 $diamonds", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = GoldAccent)
-                Text(text = "Diamonds", fontSize = 11.sp, color = Color(0xFFB0ACC0))
+                Text(text = "🔮 $diamonds", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = GoldAccent)
+                Text(text = "Gems", fontSize = 11.sp, color = Color(0xFFB0ACC0))
             }
             Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFF2D2640)))
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

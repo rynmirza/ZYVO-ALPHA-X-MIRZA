@@ -60,9 +60,9 @@ val LIVE_ROOM_COVER_PRESETS = listOf(
     ),
     CoverPreset(
         id = "top_host_gala",
-        title = "Top Host Gala & Diamond Runway",
+        title = "Top Host Gala & Gem Runway",
         subtitle = "Ansharah Gahni Super Stage",
-        iconEmoji = "💎",
+        iconEmoji = "🔮",
         imageUrl = "https://mp3tourl.com/images/1788287833535-dc94ba6e-5e98-4349-b949-cd1521ff4618.jpg",
         accentColor = ElectricMagenta
     ),
