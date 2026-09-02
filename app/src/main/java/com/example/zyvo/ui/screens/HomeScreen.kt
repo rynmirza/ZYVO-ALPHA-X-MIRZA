@@ -1,10 +1,14 @@
 package com.example.zyvo.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,12 +38,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.zyvo.ui.components.AnimatedHostAvatar
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.example.zyvo.model.LiveRoom
 import com.example.zyvo.model.RoomType
 import com.example.zyvo.model.UserProfile
+import com.example.zyvo.model.VipTier
+import com.example.zyvo.ui.components.ExecutiveAvatar
+import com.example.zyvo.ui.components.openWhatsAppChat
 import com.example.zyvo.ui.theme.*
 
 // Data Models for Home Page Reference Content
@@ -50,6 +62,7 @@ data class TopHostItem(
     val category: String,
     val viewerCount: String,
     val imageUrl: String,
+    val gender: String = "Female",
     val roomType: RoomType = RoomType.SINGLE_LIVE
 )
 
@@ -59,7 +72,8 @@ data class PopularHostItem(
     val popularity: String,
     val imageUrl: String,
     val isGoldCrown: Boolean = true,
-    val hasRose: Boolean = false
+    val hasRose: Boolean = false,
+    val gender: String = "Female"
 )
 
 @Composable
@@ -76,8 +90,110 @@ fun HomeScreen(
     onRoomClick: (LiveRoom) -> Unit,
     onGoLiveClick: () -> Unit,
     onOpenAnalyticsClick: () -> Unit,
-    onOpenUserDetail: ((String) -> Unit)? = null
+    onOpenUserDetail: ((String) -> Unit)? = null,
+    onNavigateToLive: (() -> Unit)? = null
 ) {
+    var showExecutiveSheet by remember { mutableStateOf(false) }
+    var showSearchDialog by remember { mutableStateOf(false) }
+    var showNotificationsDialog by remember { mutableStateOf(false) }
+    var showDailyTaskDialog by remember { mutableStateOf(false) }
+    var showTopLiveExplorer by remember { mutableStateOf(false) }
+    var showPkExplorer by remember { mutableStateOf(false) }
+    var showAudioExplorer by remember { mutableStateOf(false) }
+    var showNewExplorer by remember { mutableStateOf(false) }
+
+    if (showNewExplorer) {
+        TopLiveExplorerScreen(
+            rooms = rooms,
+            initialCategory = "New",
+            headerBadgeText = "NEW CREATORS",
+            screenTitle = "NEW CREATOR ROOMS",
+            ceoProfile = ceoProfile,
+            coFounderProfile = coFounderProfile,
+            onBack = { showNewExplorer = false },
+            onRoomClick = { room ->
+                showNewExplorer = false
+                onRoomClick(room)
+            },
+            onOpenUserDetail = { uid ->
+                showNewExplorer = false
+                onOpenUserDetail?.invoke(uid)
+            },
+            onOpenAnalyticsClick = onOpenAnalyticsClick,
+            onGoLiveClick = onGoLiveClick
+        )
+        return
+    }
+
+    if (showAudioExplorer) {
+        TopLiveExplorerScreen(
+            rooms = rooms,
+            initialCategory = "Audio",
+            headerBadgeText = "AUDIO STAGE",
+            screenTitle = "AUDIO & MULTI ROOMS",
+            ceoProfile = ceoProfile,
+            coFounderProfile = coFounderProfile,
+            onBack = { showAudioExplorer = false },
+            onRoomClick = { room ->
+                showAudioExplorer = false
+                onRoomClick(room)
+            },
+            onOpenUserDetail = { uid ->
+                showAudioExplorer = false
+                onOpenUserDetail?.invoke(uid)
+            },
+            onOpenAnalyticsClick = onOpenAnalyticsClick,
+            onGoLiveClick = onGoLiveClick
+        )
+        return
+    }
+
+    if (showPkExplorer) {
+        TopLiveExplorerScreen(
+            rooms = rooms,
+            initialCategory = "PK Battle",
+            headerBadgeText = "PK ARENA",
+            screenTitle = "PK BATTLE ARENAS",
+            ceoProfile = ceoProfile,
+            coFounderProfile = coFounderProfile,
+            onBack = { showPkExplorer = false },
+            onRoomClick = { room ->
+                showPkExplorer = false
+                onRoomClick(room)
+            },
+            onOpenUserDetail = { uid ->
+                showPkExplorer = false
+                onOpenUserDetail?.invoke(uid)
+            },
+            onOpenAnalyticsClick = onOpenAnalyticsClick,
+            onGoLiveClick = onGoLiveClick
+        )
+        return
+    }
+
+    if (showTopLiveExplorer) {
+        TopLiveExplorerScreen(
+            rooms = rooms,
+            initialCategory = "All",
+            headerBadgeText = "TOP LIVE",
+            screenTitle = "TOP LIVE ROOMS",
+            ceoProfile = ceoProfile,
+            coFounderProfile = coFounderProfile,
+            onBack = { showTopLiveExplorer = false },
+            onRoomClick = { room ->
+                showTopLiveExplorer = false
+                onRoomClick(room)
+            },
+            onOpenUserDetail = { uid ->
+                showTopLiveExplorer = false
+                onOpenUserDetail?.invoke(uid)
+            },
+            onOpenAnalyticsClick = onOpenAnalyticsClick,
+            onGoLiveClick = onGoLiveClick
+        )
+        return
+    }
+
     // Reference Data items matching the design source of truth
     val topLiveHosts = remember {
         listOf(
@@ -119,7 +235,8 @@ fun HomeScreen(
                 name = "King Of King's",
                 popularity = "127.5M",
                 imageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80",
-                isGoldCrown = true
+                isGoldCrown = true,
+                gender = "Male"
             ),
             PopularHostItem(
                 id = "drama_queen",
@@ -153,6 +270,31 @@ fun HomeScreen(
         )
     }
 
+    val allSquareRooms = remember(topLiveHosts, rooms) {
+        val staticList = topLiveHosts.map { host ->
+            SquareRoomItem(
+                id = host.id,
+                name = host.name,
+                category = host.category,
+                viewerCount = host.viewerCount,
+                imageUrl = host.imageUrl,
+                gender = host.gender
+            )
+        }
+        val dynamicList = rooms.map { r ->
+            SquareRoomItem(
+                id = r.id,
+                name = r.hostName,
+                category = r.category,
+                viewerCount = "${r.viewerCount}",
+                imageUrl = r.roomCoverUrl ?: r.hostAvatarUrl ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500",
+                gender = r.hostGender,
+                liveRoomObj = r
+            )
+        }
+        (dynamicList + staticList).distinctBy { it.id }
+    }
+
     Scaffold(
         containerColor = Color(0xFF090712) // Deep space black/navy
     ) { innerPadding ->
@@ -167,20 +309,26 @@ fun HomeScreen(
             item {
                 Spacer(modifier = Modifier.height(6.dp))
                 HomeTopHeader(
-                    onOpenAnalytics = onOpenAnalyticsClick
+                    onOpenAnalytics = onOpenAnalyticsClick,
+                    onSearchClick = { showSearchDialog = true },
+                    onNotificationsClick = { showNotificationsDialog = true }
                 )
             }
 
             // 2. HERO PROMOTIONAL BANNER
             item {
-                HeroPromoBanner(onGoLiveClick = onGoLiveClick)
+                HeroPromoBanner(onClick = { showExecutiveSheet = true })
             }
 
             // 3. QUICK ACCESS HORIZONTAL CARD
             item {
                 QuickAccessCard(
                     selectedCategory = selectedCategory,
-                    onSelectCategory = onSelectCategory
+                    onSelectCategory = onSelectCategory,
+                    onTopLiveClick = { showTopLiveExplorer = true },
+                    onPkBattleClick = { showPkExplorer = true },
+                    onAudioLiveClick = { showAudioExplorer = true },
+                    onNewClick = { showNewExplorer = true }
                 )
             }
 
@@ -189,7 +337,7 @@ fun HomeScreen(
                 SectionHeader(
                     icon = "🔥",
                     title = "Top Live",
-                    onViewAllClick = { onSelectCategory(null) }
+                    onViewAllClick = { showTopLiveExplorer = true }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 LazyRow(
@@ -201,7 +349,10 @@ fun HomeScreen(
                         TopLiveCard(
                             item = hostItem,
                             onClick = {
-                                val matchRoom = rooms.firstOrNull()
+                                val matchRoom = rooms.find { 
+                                    it.creatorIdentity == hostItem.id || 
+                                    it.hostName.equals(hostItem.name, ignoreCase = true) 
+                                } ?: rooms.firstOrNull()
                                 if (matchRoom != null) {
                                     onRoomClick(matchRoom)
                                 } else {
@@ -242,18 +393,49 @@ fun HomeScreen(
                 }
             }
 
-            // 6. VIP PROMOTION BANNER
+            // 6. ALL LIVE ROOMS (1:1 SQUARE GRID)
             item {
-                VipUpgradeBanner(onUpgradeClick = onOpenAnalyticsClick)
+                Spacer(modifier = Modifier.height(6.dp))
+                SectionHeader(
+                    icon = "🔥",
+                    title = "All Live Streams",
+                    onViewAllClick = { showTopLiveExplorer = true }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
             }
 
-            // 7. FEATURE CARDS GRID (2x2)
-            item {
-                FeatureCardsGrid(
-                    onSelectCategory = onSelectCategory,
-                    onGoLiveClick = onGoLiveClick,
-                    onOpenAnalyticsClick = onOpenAnalyticsClick
-                )
+            items(allSquareRooms.chunked(2), key = { pair -> pair.first().id }) { pair ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    pair.forEach { roomItem ->
+                        Box(modifier = Modifier.weight(1f)) {
+                            SquareRoomCard(
+                                item = roomItem,
+                                onClick = {
+                                    if (roomItem.liveRoomObj != null) {
+                                        onRoomClick(roomItem.liveRoomObj)
+                                    } else {
+                                        val match = rooms.find { 
+                                            it.creatorIdentity == roomItem.id || 
+                                            it.hostName.equals(roomItem.name, ignoreCase = true) 
+                                        } ?: rooms.firstOrNull()
+                                        if (match != null) {
+                                            onRoomClick(match)
+                                        } else {
+                                            onGoLiveClick()
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    if (pair.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             // Bottom Spacing for Fixed Navigation Bar
@@ -262,6 +444,64 @@ fun HomeScreen(
             }
         }
     }
+
+    // Executive Founders Leadership Bottom Sheet
+    if (showExecutiveSheet) {
+        ExecutiveFoundersModal(
+            ceoProfile = ceoProfile,
+            coFounderProfile = coFounderProfile,
+            onDismiss = { showExecutiveSheet = false },
+            onOpenProfile = { userId ->
+                showExecutiveSheet = false
+                onOpenUserDetail?.invoke(userId)
+            },
+            onOpenLiveRoom = { roomId ->
+                showExecutiveSheet = false
+                val matchRoom = rooms.find { it.id == roomId }
+                if (matchRoom != null) {
+                    onRoomClick(matchRoom)
+                } else {
+                    onGoLiveClick()
+                }
+            }
+        )
+    }
+
+    // Search Modal
+    if (showSearchDialog) {
+        HomeSearchModal(
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            topHosts = topLiveHosts,
+            onHostClick = { hostId ->
+                showSearchDialog = false
+                onOpenUserDetail?.invoke(hostId)
+            },
+            onDismiss = { showSearchDialog = false }
+        )
+    }
+
+    // Notifications Modal
+    if (showNotificationsDialog) {
+        HomeNotificationsModal(
+            onDismiss = { showNotificationsDialog = false },
+            onOpenCeoProfile = {
+                showNotificationsDialog = false
+                onOpenUserDetail?.invoke("ceo_rayan")
+            }
+        )
+    }
+
+    // Daily Tasks Modal
+    if (showDailyTaskDialog) {
+        HomeDailyTasksModal(
+            onDismiss = { showDailyTaskDialog = false },
+            onGoLiveClick = {
+                showDailyTaskDialog = false
+                onGoLiveClick()
+            }
+        )
+    }
 }
 
 // --------------------------------------------------------------------------------
@@ -269,7 +509,9 @@ fun HomeScreen(
 // --------------------------------------------------------------------------------
 @Composable
 fun HomeTopHeader(
-    onOpenAnalytics: () -> Unit
+    onOpenAnalytics: () -> Unit,
+    onSearchClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -306,7 +548,7 @@ fun HomeTopHeader(
             HeaderCircleIconButton(
                 icon = Icons.Default.Search,
                 contentDescription = "Search",
-                onClick = { }
+                onClick = onSearchClick
             )
             HeaderCircleIconButton(
                 icon = Icons.Default.EmojiEvents,
@@ -317,7 +559,7 @@ fun HomeTopHeader(
                 icon = Icons.Default.Notifications,
                 contentDescription = "Notifications",
                 hasBadge = true,
-                onClick = { }
+                onClick = onNotificationsClick
             )
         }
     }
@@ -363,7 +605,7 @@ fun HeaderCircleIconButton(
 // 2. HERO PROMOTIONAL BANNER COMPOSABLE
 // --------------------------------------------------------------------------------
 @Composable
-fun HeroPromoBanner(onGoLiveClick: () -> Unit) {
+fun HeroPromoBanner(onClick: () -> Unit) {
     val context = LocalContext.current
     Box(
         modifier = Modifier
@@ -378,7 +620,7 @@ fun HeroPromoBanner(onGoLiveClick: () -> Unit) {
                 ),
                 shape = RoundedCornerShape(20.dp)
             )
-            .clickable { onGoLiveClick() }
+            .clickable { onClick() }
             .testTag("hero_promo_banner")
     ) {
         AsyncImage(
@@ -481,7 +723,11 @@ fun CrownTrophyGraphic(modifier: Modifier = Modifier) {
 @Composable
 fun QuickAccessCard(
     selectedCategory: RoomType?,
-    onSelectCategory: (RoomType?) -> Unit
+    onSelectCategory: (RoomType?) -> Unit,
+    onTopLiveClick: () -> Unit,
+    onPkBattleClick: () -> Unit = { onSelectCategory(RoomType.PK_BATTLE) },
+    onAudioLiveClick: () -> Unit = { onSelectCategory(RoomType.AUDIO_STAGE) },
+    onNewClick: () -> Unit = { onSelectCategory(null) }
 ) {
     Box(
         modifier = Modifier
@@ -497,32 +743,31 @@ fun QuickAccessCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             QuickAccessItem(
-                icon = Icons.Default.Videocam,
-                iconBgGradient = listOf(Color(0xFFFF007A), Color(0xFFFF529A)),
+                imageRes = com.example.zyvo.R.drawable.ic_top_live_custom,
                 label = "Top Live",
-                isSelected = selectedCategory == null,
-                onClick = { onSelectCategory(null) }
+                isSelected = false,
+                onClick = onTopLiveClick
             )
             QuickAccessItem(
-                icon = Icons.Default.FlashOn,
+                imageRes = com.example.zyvo.R.drawable.ic_pk_battle_custom,
                 iconBgGradient = listOf(Color(0xFF7209B7), Color(0xFFB5179E)),
                 label = "PK Battle",
                 isSelected = selectedCategory == RoomType.PK_BATTLE,
-                onClick = { onSelectCategory(RoomType.PK_BATTLE) }
+                onClick = onPkBattleClick
             )
             QuickAccessItem(
-                icon = Icons.Default.Mic,
+                imageRes = com.example.zyvo.R.drawable.ic_audio_live_custom,
                 iconBgGradient = listOf(Color(0xFF3A0CA3), Color(0xFF480CA8)),
                 label = "Audio Live",
-                isSelected = selectedCategory == RoomType.AUDIO_STAGE,
-                onClick = { onSelectCategory(RoomType.AUDIO_STAGE) }
+                isSelected = selectedCategory == RoomType.AUDIO_STAGE || selectedCategory == RoomType.MULTI_GUEST,
+                onClick = onAudioLiveClick
             )
             QuickAccessItem(
-                icon = Icons.Default.Stars,
+                imageRes = com.example.zyvo.R.drawable.ic_new_custom,
                 iconBgGradient = listOf(Color(0xFF4361EE), Color(0xFF4CC9F0)),
                 label = "New",
-                isSelected = selectedCategory == RoomType.MULTI_GUEST,
-                onClick = { onSelectCategory(RoomType.MULTI_GUEST) }
+                isSelected = false,
+                onClick = onNewClick
             )
         }
     }
@@ -530,37 +775,65 @@ fun QuickAccessCard(
 
 @Composable
 fun QuickAccessItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconBgGradient: List<Color>,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    imageRes: Int? = null,
+    iconBgGradient: List<Color> = listOf(Color(0xFFFF007A), Color(0xFFFF529A)),
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .testTag("quick_access_${label.lowercase().replace(" ", "_")}")
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Brush.linearGradient(iconBgGradient))
-                .border(
-                    width = if (isSelected) 1.5.dp else 0.dp,
-                    color = Color.White,
-                    shape = RoundedCornerShape(12.dp)
+                .size(44.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .then(
+                    if (imageRes != null) {
+                        Modifier.border(
+                            width = if (isSelected) 1.5.dp else 0.5.dp,
+                            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(13.dp)
+                        )
+                    } else {
+                        Modifier
+                            .background(Brush.linearGradient(iconBgGradient))
+                            .border(
+                                width = if (isSelected) 1.5.dp else 0.dp,
+                                color = Color.White,
+                                shape = RoundedCornerShape(13.dp)
+                            )
+                    }
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
+            if (imageRes != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(imageRes)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = label,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(13.dp))
+                )
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
@@ -674,12 +947,25 @@ fun TopLiveCard(
                     .padding(horizontal = 6.dp, vertical = 2.dp)
                     .align(Alignment.TopStart)
             ) {
-                Text(
-                    text = "LIVE",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(com.example.zyvo.R.drawable.ic_live_custom)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "LIVE",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                }
             }
 
             // Viewers Pill Overlay (Bottom Left on image)
@@ -729,7 +1015,7 @@ fun TopLiveCard(
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = "Verified",
-                tint = Color(0xFF00F0FF),
+                tint = getVerifiedTickColor(item.gender, item.name),
                 modifier = Modifier.size(12.dp)
             )
         }
@@ -737,6 +1023,152 @@ fun TopLiveCard(
         // Category Tag
         Text(
             text = item.category,
+            fontSize = 10.sp,
+            color = Color(0xFFB0ACC0),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+data class SquareRoomItem(
+    val id: String,
+    val name: String,
+    val category: String,
+    val viewerCount: String,
+    val imageUrl: String,
+    val gender: String = "Female",
+    val liveRoomObj: LiveRoom? = null
+)
+
+@Composable
+fun SquareRoomCard(
+    item: SquareRoomItem,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFF1B162B))
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(item.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = item.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Scrim overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0x44000000),
+                                Color.Transparent,
+                                Color(0xDD090712)
+                            )
+                        )
+                    )
+            )
+
+            // LIVE Pill Badge (Top-Left)
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFFFF007A))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .align(Alignment.TopStart)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(com.example.zyvo.R.drawable.ic_live_custom)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "LIVE",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                }
+            }
+
+            // Viewers Count Pill (Bottom-Left on image)
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x99000000))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .align(Alignment.BottomStart)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = item.viewerCount,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Host Name + Verified Tick Checkmark
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = item.name,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = "Verified",
+                tint = getVerifiedTickColor(item.gender, item.name),
+                modifier = Modifier.size(12.dp)
+            )
+        }
+
+        // Category Tag
+        Text(
+            text = "#${item.category}",
             fontSize = 10.sp,
             color = Color(0xFFB0ACC0),
             maxLines = 1,
@@ -803,7 +1235,20 @@ fun DynamicRoomCard(
                     .padding(horizontal = 6.dp, vertical = 2.dp)
                     .align(Alignment.TopStart)
             ) {
-                Text(text = "LIVE", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.White)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(com.example.zyvo.R.drawable.ic_live_custom)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(text = "LIVE", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.White)
+                }
             }
 
             Box(
@@ -827,7 +1272,7 @@ fun DynamicRoomCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = room.hostName, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(modifier = Modifier.width(3.dp))
-            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF00F0FF), modifier = Modifier.size(12.dp))
+            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "Verified", tint = getVerifiedTickColor(room.hostGender, room.hostName), modifier = Modifier.size(12.dp))
         }
         Text(text = "#${room.category}", fontSize = 10.sp, color = Color(0xFFB0ACC0), maxLines = 1)
     }
@@ -841,70 +1286,45 @@ fun PopularHostCrownItem(
     host: PopularHostItem,
     onOpenUserDetail: ((String) -> Unit)?
 ) {
-    val context = LocalContext.current
+    val hostGender = if (host.gender.isNotBlank()) host.gender else if (host.isGoldCrown) "Male" else "Female"
+    
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .width(82.dp)
+            .width(105.dp)
             .clickable { onOpenUserDetail?.invoke(host.id) }
+            .padding(vertical = 4.dp)
     ) {
-        Box(
-            modifier = Modifier.size(80.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            // Crown Frame Visual
-            CrownFrameHeader(
-                isGold = host.isGoldCrown,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = (-6).dp)
-                    .zIndex(2f)
+        Box(contentAlignment = Alignment.BottomCenter) {
+            AnimatedHostAvatar(
+                imageUrl = host.imageUrl,
+                gender = hostGender,
+                name = host.name,
+                rank = when (host.id) {
+                    "king_of_kings" -> 1
+                    "drama_queen" -> 2
+                    "jannatul_islam" -> 3
+                    else -> null
+                },
+                size = 96.dp,
+                isLive = true
             )
-
-            // Circular Host Avatar
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(host.imageUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = host.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 2.dp,
-                        brush = Brush.linearGradient(
-                            if (host.isGoldCrown) listOf(Color(0xFFFFD700), Color(0xFFFFA500))
-                            else listOf(Color(0xFFE0E0E0), Color(0xFF9E9E9E))
-                        ),
-                        shape = CircleShape
-                    )
-            )
-
-            // Rose Badge overlay if requested
-            if (host.hasRose) {
-                Text(
-                    text = "🌹",
-                    fontSize = 14.sp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .offset(x = (-4).dp, y = (-12).dp)
-                )
-            }
 
             // Popularity Pill Badge Overlay at bottom
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = 4.dp)
+                    .offset(y = 2.dp)
                     .clip(CircleShape)
                     .background(
                         Brush.horizontalGradient(
-                            listOf(Color(0xFF4361EE), Color(0xFF7209B7))
+                            if (hostGender.equals("Male", ignoreCase = true)) 
+                                listOf(Color(0xFFFFB300), Color(0xFFFF8F00))
+                            else 
+                                listOf(Color(0xFFFF007A), Color(0xFF7928CA))
                         )
                     )
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                    .padding(horizontal = 7.dp, vertical = 2.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -926,15 +1346,28 @@ fun PopularHostCrownItem(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        Text(
-            text = host.name,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = host.name,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = com.example.zyvo.ui.theme.getVerifiedTickColor(hostGender, host.name),
+                modifier = Modifier.size(11.dp)
+            )
+        }
     }
 }
 
@@ -1076,7 +1509,9 @@ enum class FeatureVisualType {
 fun FeatureCardsGrid(
     onSelectCategory: (RoomType?) -> Unit,
     onGoLiveClick: () -> Unit,
-    onOpenAnalyticsClick: () -> Unit
+    onOpenAnalyticsClick: () -> Unit,
+    onDailyTaskClick: () -> Unit = onOpenAnalyticsClick,
+    onPkBattleClick: () -> Unit = { onSelectCategory(RoomType.PK_BATTLE) }
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Row 1: PK Battle & Go Live
@@ -1092,7 +1527,7 @@ fun FeatureCardsGrid(
                 cardGradient = listOf(Color(0xFF1E0A38), Color(0xFF3C0E5A)),
                 buttonGradient = listOf(Color(0xFF4361EE), Color(0xFF3A0CA3)),
                 visualType = FeatureVisualType.PK_BATTLE,
-                onClick = { onSelectCategory(RoomType.PK_BATTLE) }
+                onClick = onPkBattleClick
             )
 
             FeatureCard(
@@ -1131,7 +1566,7 @@ fun FeatureCardsGrid(
                 cardGradient = listOf(Color(0xFF1F083B), Color(0xFF3E0F66)),
                 buttonGradient = listOf(Color(0xFF7209B7), Color(0xFF4361EE)),
                 visualType = FeatureVisualType.DAILY_TASK,
-                onClick = onOpenAnalyticsClick
+                onClick = onDailyTaskClick
             )
         }
     }
@@ -1222,100 +1657,41 @@ fun FeatureCard(
 fun PkBattleVisualGraphic() {
     val context = LocalContext.current
     Box(
-        modifier = Modifier.size(75.dp),
+        modifier = Modifier.size(68.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Left Female Host Avatar
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data("https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80")
+                .data(com.example.zyvo.R.drawable.ic_pk_battle_custom)
                 .crossfade(true)
                 .build(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+            contentDescription = "PK Battle",
+            contentScale = ContentScale.Fit,
             modifier = Modifier
-                .size(38.dp)
-                .offset(x = (-14).dp)
-                .clip(CircleShape)
-                .border(1.5.dp, Color(0xFF00F0FF), CircleShape)
+                .fillMaxSize()
+                .clip(RoundedCornerShape(12.dp))
         )
-
-        // Right Female Host Avatar
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data("https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80")
-                .crossfade(true)
-                .build(),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(38.dp)
-                .offset(x = 14.dp)
-                .clip(CircleShape)
-                .border(1.5.dp, Color(0xFFFF007A), CircleShape)
-        )
-
-        // Electric VS Badge in Center
-        Box(
-            modifier = Modifier
-                .zIndex(3f)
-                .clip(CircleShape)
-                .background(
-                    Brush.linearGradient(
-                        listOf(Color(0xFFFFD700), Color(0xFFFF8C00))
-                    )
-                )
-                .border(1.dp, Color.White, CircleShape)
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-        ) {
-            Text(
-                text = "VS",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
-                color = Color(0xFF300000)
-            )
-        }
     }
 }
 
 @Composable
 fun GoLiveVisualGraphic() {
+    val context = LocalContext.current
     Box(
-        modifier = Modifier.size(75.dp),
+        modifier = Modifier.size(68.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Neon Glow background
-        Box(
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(com.example.zyvo.R.drawable.ic_live_custom)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Go Live",
+            contentScale = ContentScale.Fit,
             modifier = Modifier
-                .size(50.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(Color(0xFFFF007A), Color(0xFF7209B7), Color(0xFF4CC9F0))
-                    )
-                )
-                .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Videocam,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(26.dp)
-                )
-                Spacer(modifier = Modifier.width(2.dp))
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
+                .fillMaxSize()
+                .clip(RoundedCornerShape(12.dp))
+        )
     }
 }
 
@@ -1524,3 +1900,977 @@ fun LiveRoomCard(
         }
     }
 }
+
+// --------------------------------------------------------------------------------
+// 8. EXECUTIVE FOUNDERS MODAL (CEO & CO-FOUNDER SPOTLIGHT)
+// --------------------------------------------------------------------------------
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExecutiveFoundersModal(
+    ceoProfile: UserProfile?,
+    coFounderProfile: UserProfile?,
+    onDismiss: () -> Unit,
+    onOpenProfile: (String) -> Unit,
+    onOpenLiveRoom: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color(0xFF130924),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 10.dp)
+                    .width(44.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(GoldAccent.copy(alpha = 0.6f))
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            // Header with Crown & Title
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "👑", fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "ZYVO EXECUTIVE LEADERSHIP",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Black,
+                            color = GoldAccent,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "Meet the Founders & Official Backers",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.1f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            // 1. FOUNDER & CEO CARD: RAYAN MIRZA
+            FounderSpotlightCard(
+                name = "RAYAN MIRZA",
+                roleTitle = "FOUNDER & CEO",
+                avatarUrl = ceoProfile?.avatarUrl ?: "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+                avatarEmoji = "👑",
+                phoneNumber = "+44 7868 713315",
+                diamondsText = "99.9M Diamonds",
+                followersText = "9.8M Fans",
+                bioText = "Supreme Sovereign • Official Creator Backing & Platform Management",
+                isCeo = true,
+                onViewProfile = { onOpenProfile("ceo_rayan") },
+                onJoinLive = { onOpenLiveRoom("room_ceo_999") }
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 2. CO-FOUNDER CARD: ALPHA RAJPOOT
+            FounderSpotlightCard(
+                name = "ALPHA RAJPOOT",
+                roleTitle = "CO-FOUNDER",
+                avatarUrl = coFounderProfile?.avatarUrl ?: "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+                avatarEmoji = "🦁",
+                phoneNumber = "+447366 387620",
+                diamondsText = "88.8M Diamonds",
+                followersText = "8.4M Fans",
+                bioText = "Global Operations Commander • Strategic Growth & PK Arena",
+                isCeo = false,
+                onViewProfile = { onOpenProfile("co_founder_alpha") },
+                onJoinLive = { onOpenLiveRoom("room_alpha_888") }
+            )
+        }
+    }
+}
+
+@Composable
+fun FounderSpotlightCard(
+    name: String,
+    roleTitle: String,
+    avatarUrl: String,
+    avatarEmoji: String,
+    phoneNumber: String,
+    diamondsText: String,
+    followersText: String,
+    bioText: String,
+    isCeo: Boolean,
+    onViewProfile: () -> Unit,
+    onJoinLive: () -> Unit
+) {
+    val context = LocalContext.current
+    val accentColor = if (isCeo) GoldAccent else NeonCyan
+    val borderGradient = if (isCeo) {
+        listOf(GoldAccent, Color(0xFFFF007A), GoldAccent)
+    } else {
+        listOf(NeonCyan, NeonPurple, NeonCyan)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .border(1.5.dp, Brush.horizontalGradient(borderGradient), RoundedCornerShape(20.dp)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1D0E33))
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Top Row: Avatar + Info
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Executive Avatar
+                ExecutiveAvatar(
+                    avatarUrl = avatarUrl,
+                    avatarEmoji = avatarEmoji,
+                    size = 64.dp,
+                    userLevel = 99,
+                    vipTier = VipTier.VIP_9,
+                    showCrown = true,
+                    showLevelBadge = true
+                )
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                // Info Column
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = name,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Verified,
+                            contentDescription = "Verified",
+                            tint = getVerifiedTickColor("Male", name),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(3.dp))
+
+                    // Role Badge
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isCeo) Color(0xFF5A3900) else Color(0xFF00445E))
+                            .border(1.dp, accentColor, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = roleTitle,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            color = accentColor
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "$diamondsText • $followersText",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldAccent
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = bioText,
+                fontSize = 11.sp,
+                color = Color.White.copy(alpha = 0.75f),
+                lineHeight = 15.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Action Buttons: WhatsApp Direct, View Profile, Live Room
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // WhatsApp Official Button
+                Button(
+                    onClick = { openWhatsAppChat(context, phoneNumber, name) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text(text = "💬", fontSize = 13.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "WhatsApp",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                // View Profile Button
+                OutlinedButton(
+                    onClick = onViewProfile,
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, accentColor),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                ) {
+                    Text(
+                        text = "View Profile",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = accentColor
+                    )
+                }
+
+                // Live Button
+                Button(
+                    onClick = onJoinLive,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isCeo) LiveRed else ElectricMagenta
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    Text(
+                        text = "🔴 Live",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------
+// 9. HOME SEARCH MODAL
+// --------------------------------------------------------------------------------
+@Composable
+fun HomeSearchModal(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    topHosts: List<TopHostItem>,
+    onHostClick: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .border(1.dp, Color(0xFFFF007A).copy(alpha = 0.5f), RoundedCornerShape(24.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF150A26))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Search Hosts & Rooms",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = { Text("Type name, category, or ID...", color = Color.Gray) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = NeonCyan)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0xFF22113D),
+                        unfocusedContainerColor = Color(0xFF22113D)
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "Suggested Stars",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldAccent
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 240.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val filtered = if (searchQuery.isBlank()) {
+                        topHosts
+                    } else {
+                        topHosts.filter {
+                            it.name.contains(searchQuery, ignoreCase = true) ||
+                                    it.category.contains(searchQuery, ignoreCase = true)
+                        }
+                    }
+
+                    items(filtered) { host ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF23143E))
+                                .clickable { onHostClick(host.id) }
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AsyncImage(
+                                model = host.imageUrl,
+                                contentDescription = host.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = host.name,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = host.category,
+                                    fontSize = 11.sp,
+                                    color = Color.White.copy(alpha = 0.6f)
+                                )
+                            }
+                            Text(
+                                text = "👀 ${host.viewerCount}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonCyan
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------
+// 10. HOME NOTIFICATIONS MODAL (UPDATES PANEL - RIGHT SIDE SLIDING DRAWER)
+// --------------------------------------------------------------------------------
+data class UpdateNotificationItem(
+    val id: String,
+    val title: String,
+    val username: String,
+    val avatarUrl: String,
+    val gender: String = "Female",
+    val badgeText: String,
+    val badgeColor: Color,
+    val message: String,
+    val time: String,
+    val isUnread: Boolean = false,
+    val actionType: String = "NONE"
+)
+
+@Composable
+fun HomeNotificationsModal(
+    onDismiss: () -> Unit,
+    onOpenCeoProfile: () -> Unit
+) {
+    var animateIn by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        animateIn = true
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+    val handleClose = {
+        if (animateIn) {
+            animateIn = false
+            coroutineScope.launch {
+                delay(220)
+                onDismiss()
+            }
+        }
+    }
+
+    // Android System Back Button handling: closes drawer first, doesn't exit app or navigate away
+    BackHandler(enabled = true) {
+        handleClose()
+    }
+
+    Dialog(
+        onDismissRequest = { handleClose() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.65f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    handleClose()
+                },
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            AnimatedVisibility(
+                visible = animateIn,
+                enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(200)),
+                exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(200)),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.85f)
+                    .widthIn(max = 380.dp)
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { /* Intercept touches so they don't click backdrop or Home screen */ },
+                    shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF130926)),
+                    border = BorderStroke(
+                        1.dp,
+                        Brush.verticalGradient(
+                            listOf(
+                                GoldAccent.copy(alpha = 0.5f),
+                                ElectricMagenta.copy(alpha = 0.3f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(18.dp)
+                    ) {
+                        // Header
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Updates",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(ElectricMagenta)
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "5 NEW",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
+                            // Close X Button (DO NOT use a clock icon)
+                            IconButton(
+                                onClick = { handleClose() },
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.12f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close Updates Panel",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Divider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Vertical list of update items
+                        val updateItems = remember {
+                            listOf(
+                                UpdateNotificationItem(
+                                    id = "ceo_announcement",
+                                    title = "CEO Rayan Mirza",
+                                    username = "RAYAN MIRZA (FOUNDER)",
+                                    avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+                                    gender = "Male",
+                                    badgeText = "OFFICIAL",
+                                    badgeColor = GoldAccent,
+                                    message = "Welcome to ZYVO Live! Platform partnerships, SVIP rewards & founder desk perks are active.",
+                                    time = "Just now",
+                                    isUnread = true,
+                                    actionType = "OPEN_CEO"
+                                ),
+                                UpdateNotificationItem(
+                                    id = "pk_live",
+                                    title = "King Of King's",
+                                    username = "King Of King's",
+                                    avatarUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80",
+                                    gender = "Male",
+                                    badgeText = "LIVE PK",
+                                    badgeColor = Color(0xFFFF0055),
+                                    message = "1v1 PK Battle is LIVE against Drama Queen! 245.8K viewers online.",
+                                    time = "5m ago",
+                                    isUnread = true
+                                ),
+                                UpdateNotificationItem(
+                                    id = "stream_ansharah",
+                                    title = "Ansharah Gahni",
+                                    username = "Ansharah Gahni",
+                                    avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80",
+                                    gender = "Female",
+                                    badgeText = "HOT STREAM",
+                                    badgeColor = ElectricMagenta,
+                                    message = "Broadcasted 'Acoustic Chill & Midnight Music Lounge'!",
+                                    time = "12m ago",
+                                    isUnread = true
+                                ),
+                                UpdateNotificationItem(
+                                    id = "gift_nusrat",
+                                    title = "Nusrat Jahan",
+                                    username = "Nusrat Jahan",
+                                    avatarUrl = "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80",
+                                    gender = "Female",
+                                    badgeText = "GIFT REWARD",
+                                    badgeColor = Color(0xFFFFB800),
+                                    message = "Sent you a Lucky Rose +50 Coins bonus in the live stream!",
+                                    time = "25m ago"
+                                ),
+                                UpdateNotificationItem(
+                                    id = "vip_alpha",
+                                    title = "Alpha Rajpoot",
+                                    username = "ALPHA RAJPOOT",
+                                    avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+                                    gender = "Male",
+                                    badgeText = "SVIP 9",
+                                    badgeColor = Color(0xFF00F0FF),
+                                    message = "Unlocked SVIP Tier 9 Supreme badge privileges & Golden Dragon frame.",
+                                    time = "1h ago"
+                                ),
+                                UpdateNotificationItem(
+                                    id = "audio_ayesha",
+                                    title = "Ayesha Live",
+                                    username = "Ayesha Live",
+                                    avatarUrl = "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80",
+                                    gender = "Female",
+                                    badgeText = "AUDIO LOUNGE",
+                                    badgeColor = Color(0xFF9D4EDD),
+                                    message = "Opened Audio Live Room 'Late Night Storytelling & Music'!",
+                                    time = "2h ago"
+                                )
+                            )
+                        }
+
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(updateItems, key = { it.id }) { item ->
+                                UpdateNotificationCard(
+                                    item = item,
+                                    onClick = {
+                                        if (item.actionType == "OPEN_CEO") {
+                                            handleClose()
+                                            onOpenCeoProfile()
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun UpdateNotificationCard(
+    item: UpdateNotificationItem,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (item.isUnread) Color(0xFF1F1138) else Color(0xFF170D2B)
+            )
+            .border(
+                1.dp,
+                if (item.isUnread) item.badgeColor.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.08f),
+                RoundedCornerShape(16.dp)
+            )
+            .clickable { onClick() }
+            .padding(12.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Thumbnail / Avatar
+            Box(contentAlignment = Alignment.BottomEnd) {
+                AsyncImage(
+                    model = item.avatarUrl,
+                    contentDescription = item.username,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .border(1.5.dp, item.badgeColor, CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                if (item.isUnread) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(ElectricMagenta)
+                            .border(1.5.dp, Color(0xFF130926), CircleShape)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                        Text(
+                            text = item.username,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.Verified,
+                            contentDescription = "Verified",
+                            tint = getVerifiedTickColor(item.gender, item.username),
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Text(
+                        text = item.time,
+                        fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(item.badgeColor)
+                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = item.badgeText,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (item.badgeColor == GoldAccent || item.badgeColor == Color(0xFFFFB800)) Color.Black else Color.White
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = item.message,
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                    lineHeight = 15.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------
+// 11. HOME DAILY TASKS MODAL
+// --------------------------------------------------------------------------------
+@Composable
+fun HomeDailyTasksModal(
+    onDismiss: () -> Unit,
+    onGoLiveClick: () -> Unit
+) {
+    var checkInClaimed by remember { mutableStateOf(false) }
+    var watchClaimed by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .border(1.dp, NeonPurpleLight.copy(alpha = 0.5f), RoundedCornerShape(24.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF160929))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "🎯", fontSize = 22.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "Daily Tasks & Rewards",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Complete tasks to earn coins & EXP",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Task 1: Daily Login
+                DailyTaskItem(
+                    title = "Daily Check-in",
+                    rewardText = "+500 Coins",
+                    progressText = "1/1",
+                    isCompleted = true,
+                    isClaimed = checkInClaimed,
+                    onClaim = { checkInClaimed = true }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Task 2: Watch Live
+                DailyTaskItem(
+                    title = "Watch Live for 5 mins",
+                    rewardText = "+300 Coins",
+                    progressText = "5/5 mins",
+                    isCompleted = true,
+                    isClaimed = watchClaimed,
+                    onClaim = { watchClaimed = true }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Task 3: Start Live Stream
+                DailyTaskItem(
+                    title = "Go Live as Host",
+                    rewardText = "+1,000 Coins + VIP EXP",
+                    progressText = "0/1",
+                    isCompleted = false,
+                    isClaimed = false,
+                    onClaim = onGoLiveClick,
+                    actionButtonLabel = "Go Live"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DailyTaskItem(
+    title: String,
+    rewardText: String,
+    progressText: String,
+    isCompleted: Boolean,
+    isClaimed: Boolean,
+    onClaim: () -> Unit,
+    actionButtonLabel: String = "Claim"
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF251342))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "🪙 $rewardText",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldAccent
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = progressText,
+                    fontSize = 10.sp,
+                    color = Color.White.copy(alpha = 0.5f)
+                )
+            }
+        }
+
+        if (isClaimed) {
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.1f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Claimed ✓",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
+                )
+            }
+        } else {
+            Button(
+                onClick = onClaim,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isCompleted) Color(0xFFFF007A) else Color(0xFF7209B7)
+                ),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                modifier = Modifier.height(34.dp)
+            ) {
+                Text(
+                    text = actionButtonLabel,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+    }
+}
+

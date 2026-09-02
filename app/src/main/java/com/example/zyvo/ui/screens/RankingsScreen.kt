@@ -24,6 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.zyvo.R
 import com.example.zyvo.model.LeaderboardCategory
 import com.example.zyvo.model.LeaderboardItem
 import com.example.zyvo.model.LeaderboardTimeframe
@@ -47,7 +50,7 @@ fun RankingsScreen(
                 rank = 1,
                 userId = "ceo_rayan",
                 username = "rayan_mirza",
-                displayName = "RAYAN MIRZA (CEO)",
+                displayName = "RAYAN MIRZA (FOUNDER & CEO)",
                 avatarEmoji = "👑",
                 avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
                 scorePoints = 99999999,
@@ -56,14 +59,14 @@ fun RankingsScreen(
                 userLevel = 99,
                 isLiveNow = true,
                 isFollowing = true,
-                executiveRole = "CEO & FOUNDER",
+                executiveRole = "FOUNDER & CEO",
                 whatsappDirectUrl = "https://wa.me/447868713315"
             ),
             LeaderboardItem(
                 rank = 2,
                 userId = "co_founder_alpha",
                 username = "alpha_rajpoot",
-                displayName = "ALPHA RAJPOOT",
+                displayName = "ALPHA RAJPOOT (CO-FOUNDER)",
                 avatarEmoji = "🦁",
                 avatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
                 scorePoints = 88888888,
@@ -141,7 +144,37 @@ fun RankingsScreen(
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isSelected) TextPrimary else TextSecondary)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                if (cat == LeaderboardCategory.PK_CHAMPIONS) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(R.drawable.ic_pk_battle_custom)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "PK Battle",
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clip(RoundedCornerShape(3.dp))
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "PK",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) TextPrimary else TextSecondary
+                                    )
+                                } else {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) TextPrimary else TextSecondary
+                                    )
+                                }
+                            }
                         }
                     }
                 }

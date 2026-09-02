@@ -17,10 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.zyvo.R
 import com.example.zyvo.ui.theme.*
 
 @Composable
@@ -37,6 +41,7 @@ fun BroadcasterToolbar(
     onOpenStats: () -> Unit,
     onOpenParticipants: () -> Unit,
     onOpenRoomCover: () -> Unit = {},
+    onTogglePkMode: () -> Unit = {},
     onRaiseHand: () -> Unit,
     isHandRaised: Boolean = false,
     onShare: () -> Unit = {}
@@ -60,6 +65,14 @@ fun BroadcasterToolbar(
                 tint = ElectricMagenta,
                 onClick = onOpenRoomCover,
                 testTag = "toolbar_cover_button"
+            )
+
+            // PK Battle Host Option Button
+            ToolbarDrawableIconButton(
+                drawableRes = R.drawable.ic_pk_battle_custom,
+                label = "PK Battle",
+                onClick = onTogglePkMode,
+                testTag = "toolbar_pk_battle_button"
             )
 
             // Mic Toggle
@@ -212,6 +225,51 @@ fun ToolbarIconButton(
             fontSize = 9.sp,
             color = TextSecondary,
             fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun ToolbarDrawableIconButton(
+    drawableRes: Int,
+    label: String,
+    onClick: () -> Unit,
+    testTag: String = ""
+) {
+    val context = LocalContext.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable { onClick() }
+            .testTag(testTag)
+            .padding(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(DarkCardElevated.copy(alpha = 0.8f))
+                .border(1.dp, PkRed.copy(alpha = 0.6f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(drawableRes)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = label,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 9.sp,
+            color = PkRed,
+            fontWeight = FontWeight.Bold
         )
     }
 }

@@ -24,12 +24,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.zyvo.model.RoomType
 import com.example.zyvo.ui.theme.*
 
@@ -152,7 +155,45 @@ fun GoLiveScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(text = icon, fontSize = 22.sp)
+                                if (type == RoomType.SINGLE_LIVE) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(com.example.zyvo.R.drawable.ic_live_custom)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = label,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                } else if (type == RoomType.PK_BATTLE) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(com.example.zyvo.R.drawable.ic_pk_battle_custom)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = label,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                } else if (type == RoomType.AUDIO_STAGE) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(com.example.zyvo.R.drawable.ic_audio_live_custom)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = label,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                } else {
+                                    Text(text = icon, fontSize = 22.sp)
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = label,

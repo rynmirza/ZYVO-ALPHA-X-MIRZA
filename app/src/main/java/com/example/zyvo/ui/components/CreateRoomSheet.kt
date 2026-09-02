@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,10 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.zyvo.model.RoomType
 import com.example.zyvo.ui.theme.*
 
@@ -99,7 +103,47 @@ fun CreateRoomSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = type.icon, fontSize = 20.sp)
+                            when (type) {
+                                RoomType.PK_BATTLE -> {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(com.example.zyvo.R.drawable.ic_pk_battle_custom)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = type.title,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                }
+                                RoomType.SINGLE_LIVE -> {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(com.example.zyvo.R.drawable.ic_live_custom)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = type.title,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                }
+                                RoomType.AUDIO_STAGE -> {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(com.example.zyvo.R.drawable.ic_audio_live_custom)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = type.title,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                }
+                                else -> {
+                                    Text(text = type.icon, fontSize = 20.sp)
+                                }
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = type.badge,
@@ -236,14 +280,19 @@ fun CreateRoomSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Videocam,
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(com.example.zyvo.R.drawable.ic_live_custom)
+                                .crossfade(true)
+                                .build(),
                             contentDescription = "Start Stream",
-                            tint = TextPrimary
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Start Broadcasting Live 🔴",
+                            text = "Start Broadcasting Live",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary

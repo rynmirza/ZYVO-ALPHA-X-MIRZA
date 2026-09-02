@@ -48,3 +48,31 @@ val YeahGoldOrangeGradient = Brush.horizontalGradient(listOf(GoldAccent, YeahOra
 val YeahDarkGlassBrush = Brush.verticalGradient(listOf(Color(0x55241C44), Color(0x22100C22)))
 val YeahCardBorderBrush = Brush.linearGradient(listOf(OverlayLight, Color.Transparent))
 val YeahActiveBorderBrush = Brush.sweepGradient(listOf(ElectricMagenta, NeonCyan, GoldAccent, ElectricMagenta))
+
+/**
+ * Returns Golden tick color for male users/hosts and Pink tick color for female users/hosts.
+ */
+fun getVerifiedTickColor(gender: String? = null, nameOrId: String? = null): Color {
+    val g = gender?.lowercase()?.trim() ?: ""
+    if (g == "female" || g == "f" || g == "woman") {
+        return Color(0xFFFF007A) // Pink tick for female
+    }
+    if (g == "male" || g == "m" || g == "man") {
+        return GoldAccent // Golden tick for male
+    }
+
+    // Name/ID fallback heuristic if gender field is unspecified
+    val name = (nameOrId ?: "").lowercase()
+    val isFemaleName = name.contains("female") || name.contains("woman") || name.contains("queen") || 
+                       name.contains("girl") || name.contains("lady") || name.contains("angel") || 
+                       name.contains("ansharah") || name.contains("nusrat") || name.contains("maisha") || 
+                       name.contains("ayesha") || name.contains("jannat") || name.contains("husnat") ||
+                       name.contains("smita") || name.contains("rose") || name.contains("princess") ||
+                       name.contains("miss") || name.contains("mrs")
+
+    val isMaleName = name.contains("male") || name.contains("man") || name.contains("king") || 
+                     name.contains("rayan") || name.contains("alpha") || name.contains("ceo") ||
+                     name.contains("prince") || name.contains("boy") || name.contains("mr")
+
+    return if (isFemaleName) Color(0xFFFF007A) else GoldAccent
+}

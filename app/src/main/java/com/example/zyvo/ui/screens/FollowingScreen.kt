@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -18,10 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.zyvo.model.ConversationSummary
 import com.example.zyvo.model.LiveRoom
 import com.example.zyvo.model.UserProfile
@@ -149,6 +153,13 @@ fun FollowingScreen(
                                 Column {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(text = conv.peerDisplayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Verified,
+                                            contentDescription = "Verified",
+                                            tint = getVerifiedTickColor(null, conv.peerDisplayName),
+                                            modifier = Modifier.size(12.dp)
+                                        )
                                         if (conv.isPeerLive) {
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Box(
@@ -157,7 +168,20 @@ fun FollowingScreen(
                                                     .background(LiveRed)
                                                     .padding(horizontal = 4.dp, vertical = 1.dp)
                                             ) {
-                                                Text("LIVE", fontSize = 8.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    AsyncImage(
+                                                        model = ImageRequest.Builder(LocalContext.current)
+                                                            .data(com.example.zyvo.R.drawable.ic_live_custom)
+                                                            .crossfade(true)
+                                                            .build(),
+                                                        contentDescription = null,
+                                                        modifier = Modifier
+                                                            .size(10.dp)
+                                                            .clip(CircleShape)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                    Text("LIVE", fontSize = 8.sp, fontWeight = FontWeight.Black, color = TextPrimary)
+                                                }
                                             }
                                         }
                                     }

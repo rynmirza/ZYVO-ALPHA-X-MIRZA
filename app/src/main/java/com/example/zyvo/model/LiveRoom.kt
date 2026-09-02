@@ -11,6 +11,7 @@ data class LiveRoom(
     val hostName: String,
     val hostAvatar: String = "🌟",
     val hostAvatarUrl: String? = null,
+    val hostGender: String = "Female",
     val roomCoverUrl: String? = null,
     val coverStyle: String = "FULL_BACKDROP",
     val useProfilePicAsCover: Boolean = true,

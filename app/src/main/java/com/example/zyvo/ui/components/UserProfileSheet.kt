@@ -43,6 +43,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.zyvo.model.UserProfile
 import com.example.zyvo.model.VipTier
+import com.example.zyvo.ui.components.AnimatedHostAvatar
 import com.example.zyvo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -221,8 +222,8 @@ fun UserProfileSheet(
                     }
                     Text(
                         text = when {
-                            isCeo -> "London Global HQ • Sovereign Desk"
-                            isCoFounder -> "Executive Director • PK Arenas"
+                            isCeo -> "Founder & CEO • Sovereign Desk"
+                            isCoFounder -> "Co-Founder • Executive Director"
                             isTopQueen -> "Superstar Broadcaster • 78.5M+"
                             else -> "Verified Broadcaster Profile"
                         },
@@ -254,12 +255,16 @@ fun UserProfileSheet(
                                 .padding(horizontal = 10.dp, vertical = 5.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(com.example.zyvo.R.drawable.ic_live_custom)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = null,
                                     modifier = Modifier
-                                        .size(8.dp)
+                                        .size(14.dp)
                                         .scale(auraPulse)
                                         .clip(CircleShape)
-                                        .background(Color.White)
                                 )
                                 Spacer(modifier = Modifier.width(5.dp))
                                 Text(
@@ -359,127 +364,20 @@ fun UserProfileSheet(
                 // Floating Avatar Stack
                 Box(
                     modifier = Modifier
-                        .offset(y = (-52).dp)
-                        .size(112.dp),
+                        .offset(y = (-45).dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Outer Pulsing Neon Glow Ring
-                    Box(
-                        modifier = Modifier
-                            .size(112.dp * auraPulse)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    colors = listOf(
-                                        primaryAccent.copy(alpha = 0.55f),
-                                        Color(0xFFFF007A).copy(alpha = 0.25f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
+                    AnimatedHostAvatar(
+                        imageUrl = user.avatarUrl ?: "",
+                        gender = user.gender ?: if (isCeo || isCoFounder) "Male" else "Female",
+                        name = user.displayName,
+                        rank = if (isCeo || isTopQueen) 1 else if (isCoFounder) 2 else null,
+                        size = 128.dp,
+                        isLive = user.isLiveNow
                     )
-
-                    // Rotating Rainbow / Gold Halo Border
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .rotate(haloRotate)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.sweepGradient(
-                                    colors = listOf(
-                                        primaryAccent,
-                                        Color(0xFFFF007A),
-                                        NeonCyan,
-                                        GoldAccent,
-                                        Color(0xFFFF6B00),
-                                        primaryAccent
-                                    )
-                                )
-                            )
-                    )
-
-                    // Inner Avatar Container
-                    Box(
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(CircleShape)
-                            .background(DarkBackground)
-                            .border(2.5.dp, Color(0xFF140220), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (!user.avatarUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(user.avatarUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = user.displayName,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                            )
-                        } else {
-                            Text(
-                                text = user.avatarEmoji,
-                                fontSize = 48.sp
-                            )
-                        }
-                    }
-
-                    // Floating 3D VIP Crown on Top of Avatar
-                    if (user.vipTier != VipTier.NONE || isCeo || isCoFounder || isTopQueen) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .offset(y = (-10).dp)
-                                .shadow(8.dp, RoundedCornerShape(12.dp))
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(GoldAccent, Color(0xFFFF8800), GoldAccent)
-                                    )
-                                )
-                                .border(1.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("👑", fontSize = 10.sp)
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Text(
-                                    text = if (user.vipTier != VipTier.NONE) user.vipTier.badge else "VIP 9",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = Color.Black
-                                )
-                            }
-                        }
-                    }
-
-                    // Floating Level Pill at Base of Avatar
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .offset(y = (10).dp)
-                            .shadow(6.dp, RoundedCornerShape(10.dp))
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(Color(0xFF7B1FA2), Color(0xFFFF007A))
-                                )
-                            )
-                            .border(1.dp, GoldAccent, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "⭐ Lv.${user.userLevel}",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            color = TextPrimary
-                        )
-                    }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Spacer(modifier = Modifier.height((-38).dp))
 
@@ -560,7 +458,7 @@ fun UserProfileSheet(
                         modifier = Modifier
                             .size(20.dp)
                             .clip(CircleShape)
-                            .background(primaryAccent),
+                            .background(getVerifiedTickColor(user.gender, user.displayName)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(

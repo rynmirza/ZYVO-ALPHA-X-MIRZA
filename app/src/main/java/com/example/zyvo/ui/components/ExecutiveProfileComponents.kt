@@ -396,10 +396,10 @@ fun ExecutiveGrandBanner(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // 1. CEO RAYAN MIRZA CARD
+            // 1. FOUNDER & CEO RAYAN MIRZA CARD
             ExecutiveMiniCard(
                 name = "RAYAN MIRZA",
-                roleTitle = "CEO & FOUNDER",
+                roleTitle = "FOUNDER & CEO",
                 avatarUrl = ceoProfile?.avatarUrl ?: "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
                 avatarEmoji = "👑",
                 phoneNumber = "+44 7868 713315",
@@ -550,12 +550,25 @@ fun ExecutiveMiniCard(
                         .weight(1f)
                         .height(34.dp)
                 ) {
-                    Text(
-                        text = "🔴 LIVE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(com.example.zyvo.R.drawable.ic_live_custom)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "LIVE",
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clip(CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "LIVE",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }

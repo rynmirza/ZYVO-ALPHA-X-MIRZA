@@ -292,11 +292,11 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
                 diamondsEarnedTotal = 99999999,
                 giftsReceivedTotal = 99999,
                 liveStreamsCount = 999,
-                badges = listOf("👑 CEO & Founder", "💎 VIP 9 SUPREME", "⭐ Lv.99 Sovereign", "Official Verified", "God Tier Creator"),
+                badges = listOf("👑 Founder & CEO", "💎 VIP 9 SUPREME", "⭐ Lv.99 Sovereign", "Official Verified", "God Tier Creator"),
                 isFollowedByCurrentUser = true,
                 isLiveNow = true,
                 currentRoomId = "room_ceo_999",
-                executiveRole = "CEO & FOUNDER",
+                executiveRole = "FOUNDER & CEO",
                 whatsappNumber = "+44 7868 713315",
                 whatsappDirectUrl = "https://wa.me/447868713315"
             ),
@@ -327,7 +327,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
                 isFollowedByCurrentUser = true,
                 isLiveNow = true,
                 currentRoomId = "room_alpha_888",
-                executiveRole = "CO-FOUNDER & EXECUTIVE DIRECTOR",
+                executiveRole = "CO-FOUNDER",
                 whatsappNumber = "+447366 387620",
                 whatsappDirectUrl = "https://wa.me/447366387620"
             ),
@@ -415,17 +415,18 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
     private fun initializeInitialRooms() {
         val ceoRoom = LiveRoom(
             id = "room_ceo_999",
-            title = "👑 CEO RAYAN MIRZA | Official Global Keynote & Creator Summit",
+            title = "👑 FOUNDER RAYAN MIRZA | Official Global Keynote & Creator Summit",
             description = "Welcome to ZYVO HQ Live Stream! Discussing new features, massive creator rewards, and global partnership opportunities. Direct WhatsApp available.",
             creatorIdentity = "ceo_rayan",
-            hostName = "RAYAN MIRZA (CEO)",
+            hostName = "RAYAN MIRZA (FOUNDER & CEO)",
             hostAvatar = "👑",
             hostAvatarUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
+            hostGender = "Male",
             roomCoverUrl = "https://cdn.phototourl.com/free/2026-09-01-f3e014af-6987-41b0-8bcf-732294379e68.png",
             coverStyle = "FULL_BACKDROP",
             roomType = RoomType.SINGLE_LIVE,
             category = "Official",
-            tags = listOf("CEO", "Official", "Summit", "VIP9", "Lv99"),
+            tags = listOf("Founder", "CEO", "Official", "Summit", "VIP9", "Lv99"),
             viewerCount = 148900,
             likesCount = 2850000,
             enableChat = true
@@ -433,17 +434,18 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
 
         val alphaRoom = LiveRoom(
             id = "room_alpha_888",
-            title = "⚔️ ALPHA RAJPOOT | Zyvo Executive PK Battle & 10M Diamond Drop",
+            title = "⚔️ CO-FOUNDER ALPHA RAJPOOT | Zyvo Executive PK Battle & 10M Diamond Drop",
             description = "High stakes Executive Battle Stage! Dropping millions of diamonds and golden gifts for the community.",
             creatorIdentity = "co_founder_alpha",
             hostName = "ALPHA RAJPOOT (CO-FOUNDER)",
             hostAvatar = "🦁",
             hostAvatarUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
+            hostGender = "Male",
             roomCoverUrl = "https://cdn.phototourl.com/free/2026-09-01-4aa927e1-ee25-497a-ae9e-4201e9d81679.jpg",
             coverStyle = "FULL_BACKDROP",
             roomType = RoomType.PK_BATTLE,
             category = "PK Arena",
-            tags = listOf("CoFounder", "PK", "HighStakes", "VIP9", "Lv99"),
+            tags = listOf("CoFounder", "Executive", "PK", "HighStakes", "VIP9", "Lv99"),
             viewerCount = 112400,
             likesCount = 1950000,
             pkState = PkState(
@@ -474,7 +476,164 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             enableChat = true
         )
 
-        _rooms.value = listOf(ceoRoom, alphaRoom, ansharahRoom)
+        val nusratRoom = LiveRoom(
+            id = "room_nusrat_01",
+            title = "❤️ Let's Talk & Relax Together | Q&A Night",
+            description = "Good vibes, music requests, and fan shoutouts! Tap the screen to send likes.",
+            creatorIdentity = "nusrat_jahan",
+            hostName = "Nusrat Jahan",
+            hostAvatar = "🌸",
+            hostAvatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80",
+            roomCoverUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80",
+            coverStyle = "FULL_BACKDROP",
+            roomType = RoomType.SINGLE_LIVE,
+            category = "Let's Talk",
+            tags = listOf("Chat", "Talk", "Verified", "Chill"),
+            viewerCount = 12500,
+            likesCount = 245000,
+            enableChat = true
+        )
+
+        val maishaRoom = LiveRoom(
+            id = "room_maisha_02",
+            title = "🌊 Good Vibes ✨ | Acoustic Chill & Stories",
+            description = "Late night chill session with live guitar and chats.",
+            creatorIdentity = "maisha",
+            hostName = "Maisha",
+            hostAvatar = "🌊",
+            hostAvatarUrl = "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80",
+            roomCoverUrl = "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80",
+            coverStyle = "FULL_BACKDROP",
+            roomType = RoomType.SINGLE_LIVE,
+            category = "Good Vibes",
+            tags = listOf("Vibes", "Acoustic", "Verified"),
+            viewerCount = 8700,
+            likesCount = 189000,
+            enableChat = true
+        )
+
+        val ayeshaRoom = LiveRoom(
+            id = "room_ayesha_03",
+            title = "🎵 Music Live | Singing Your Favorite Songs Live 🎤",
+            description = "Drop your song requests in the comments! Gift senders get priority queue.",
+            creatorIdentity = "ayesha_live",
+            hostName = "Ayesha Live",
+            hostAvatar = "🎵",
+            hostAvatarUrl = "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80",
+            roomCoverUrl = "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80",
+            coverStyle = "FULL_BACKDROP",
+            roomType = RoomType.SINGLE_LIVE,
+            category = "Music Live",
+            tags = listOf("Music", "Singing", "LiveConcert"),
+            viewerCount = 9200,
+            likesCount = 210000,
+            enableChat = true
+        )
+
+        val cuteAngelRoom = LiveRoom(
+            id = "room_angel_04",
+            title = "⭐ Happy Time | Gaming & Cozy Talk 🎮",
+            description = "Playing community games and chatting with VIP followers.",
+            creatorIdentity = "cute_angel",
+            hostName = "Cute Angel",
+            hostAvatar = "⭐",
+            hostAvatarUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=80",
+            roomCoverUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=80",
+            coverStyle = "FULL_BACKDROP",
+            roomType = RoomType.SINGLE_LIVE,
+            category = "Entertainment",
+            tags = listOf("Happy", "Gaming", "Fun"),
+            viewerCount = 7100,
+            likesCount = 154000,
+            enableChat = true
+        )
+
+        val kingRoom = LiveRoom(
+            id = "room_king_05",
+            title = "👑 King Of King's | Elite Battle Championship 🔥",
+            description = "Defending our #1 Global Leaderboard rank in high-energy battles!",
+            creatorIdentity = "king_of_kings",
+            hostName = "King Of King's",
+            hostAvatar = "👑",
+            hostAvatarUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80",
+            hostGender = "Male",
+            roomCoverUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80",
+            coverStyle = "FULL_BACKDROP",
+            roomType = RoomType.PK_BATTLE,
+            category = "PK Arena",
+            tags = listOf("PK", "Champion", "GoldRank"),
+            viewerCount = 45200,
+            likesCount = 980000,
+            enableChat = true
+        )
+
+        val dramaQueenRoom = LiveRoom(
+            id = "room_drama_06",
+            title = "🎭 Drama Queen | Theatre, Acting & Roast Party 🎉",
+            description = "Hilarious live interactions and creative skits with the chat!",
+            creatorIdentity = "drama_queen",
+            hostName = "Drama Queen",
+            hostAvatar = "🎭",
+            hostAvatarUrl = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=80",
+            roomCoverUrl = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&auto=format&fit=crop&q=80",
+            coverStyle = "FULL_BACKDROP",
+            roomType = RoomType.MULTI_GUEST,
+            category = "Multi-Guest",
+            tags = listOf("Party", "Drama", "MultiGuest"),
+            viewerCount = 38900,
+            likesCount = 750000,
+            enableChat = true
+        )
+
+        val jannatRoom = LiveRoom(
+            id = "room_jannat_07",
+            title = "💬 Jannatul Islam | Late Night Podcast & Advice ☕",
+            description = "Real talk, listener stories, and community advice circle.",
+            creatorIdentity = "jannatul_islam",
+            hostName = "Jannatul Islam",
+            hostAvatar = "☕",
+            hostAvatarUrl = "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&auto=format&fit=crop&q=80",
+            roomCoverUrl = "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&auto=format&fit=crop&q=80",
+            coverStyle = "FULL_BACKDROP",
+            roomType = RoomType.AUDIO_STAGE,
+            category = "Audio Stage",
+            tags = listOf("Podcast", "Audio", "LateNight"),
+            viewerCount = 28400,
+            likesCount = 610000,
+            enableChat = true
+        )
+
+        val husnatRoom = LiveRoom(
+            id = "room_husnat_08",
+            title = "✨ Husnat Smita | Global Talent & Dance Spotlight 💃",
+            description = "High energy dance performances and freestyle live stream!",
+            creatorIdentity = "husnat_smita",
+            hostName = "Husnat Smita",
+            hostAvatar = "💃",
+            hostAvatarUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&auto=format&fit=crop&q=80",
+            roomCoverUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500&auto=format&fit=crop&q=80",
+            coverStyle = "FULL_BACKDROP",
+            roomType = RoomType.SINGLE_LIVE,
+            category = "Dance",
+            tags = listOf("Dance", "Talent", "Energy"),
+            viewerCount = 21900,
+            likesCount = 490000,
+            enableChat = true
+        )
+
+        _rooms.value = listOf(
+            ceoRoom,
+            alphaRoom,
+            ansharahRoom,
+            nusratRoom,
+            maishaRoom,
+            ayeshaRoom,
+            cuteAngelRoom,
+            kingRoom,
+            dramaQueenRoom,
+            jannatRoom,
+            husnatRoom
+        )
 
         // Pre-fill initial chat messages
         _chatMessages.value = mapOf(
@@ -842,6 +1001,7 @@ class ZyvoRepository(private val scope: CoroutineScope = CoroutineScope(Dispatch
             hostName = currentUserName,
             hostAvatar = currentUserAvatar,
             hostAvatarUrl = currentProfile.avatarUrl,
+            hostGender = currentProfile.gender,
             roomCoverUrl = currentProfile.avatarUrl,
             coverStyle = "FULL_BACKDROP",
             roomType = roomType,

@@ -111,6 +111,7 @@ fun UserProfileScreen(
                 ProfileHeaderSection(
                     displayName = displayName,
                     userId = userId,
+                    gender = userProfile.gender,
                     avatarUrl = avatarUrl,
                     userLevel = 48,
                     currentXp = 89560,
@@ -277,6 +278,7 @@ fun UserProfileScreen(
 private fun ProfileHeaderSection(
     displayName: String,
     userId: String,
+    gender: String = "Female",
     avatarUrl: String,
     userLevel: Int,
     currentXp: Int,
@@ -464,12 +466,12 @@ private fun ProfileHeaderSection(
                             overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.width(5.dp))
-                        // Verified Blue Checkmark
+                        // Verified Gender-based Checkmark (Golden for Male, Pink for Female)
                         Box(
                             modifier = Modifier
                                 .size(16.dp)
                                 .clip(CircleShape)
-                                .background(NeonCyanColor),
+                                .background(getVerifiedTickColor(gender, displayName)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(

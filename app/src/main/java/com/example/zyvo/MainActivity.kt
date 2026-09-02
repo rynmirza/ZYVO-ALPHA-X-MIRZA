@@ -222,7 +222,8 @@ fun ZyvoApp(
                         onRoomClick = { room -> viewModel.joinRoom(room.id) },
                         onGoLiveClick = { viewModel.setShowCreateRoomSheet(true) },
                         onOpenAnalyticsClick = { activeSubView = "rankings" },
-                        onOpenUserDetail = { userId -> viewModel.openUserProfile(userId) }
+                        onOpenUserDetail = { userId -> viewModel.openUserProfile(userId) },
+                        onNavigateToLive = { viewModel.setSelectedTab(1) }
                     )
                     1 -> FollowingScreen(
                         followedRooms = followedRooms,
