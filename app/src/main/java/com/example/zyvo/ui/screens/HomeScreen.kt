@@ -383,8 +383,10 @@ fun HeroPromoBanner(onGoLiveClick: () -> Unit) {
     ) {
         AsyncImage(
             model = ImageRequest.Builder(context)
-                .data("https://weekly-ivory-vny1v5d4.edgeone.dev/")
+                .data(com.example.zyvo.R.drawable.hero_banner)
                 .crossfade(true)
+                .error(com.example.zyvo.R.drawable.hero_banner)
+                .fallback(com.example.zyvo.R.drawable.hero_banner)
                 .build(),
             contentDescription = "BE A STAR BE ON TOP",
             contentScale = ContentScale.Crop,
