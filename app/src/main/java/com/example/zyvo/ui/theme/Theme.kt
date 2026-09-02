@@ -1,59 +1,34 @@
 package com.example.zyvo.ui.theme
 
-import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
+import androidx.compose.ui.graphics.Color
+
+val DeepVioletBg = Color(0xFF0F0B1E)
+val ElectricMagenta = Color(0xFFFF007A)
+val GoldAccent = Color(0xFFFFD700)
+val DarkSurface = Color(0xFF1B1437)
+val CardSurface = Color(0xFF261D4C)
+val TextLight = Color(0xFFF3E8FF)
+val TextGray = Color(0xFFB0ACC0)
 
 private val DarkColorScheme = darkColorScheme(
-    primary = NeonPurple,
-    onPrimary = TextPrimary,
-    primaryContainer = NeonPurpleDark,
-    onPrimaryContainer = TextPrimary,
-    secondary = ElectricMagenta,
-    onSecondary = TextPrimary,
-    secondaryContainer = DarkCardElevated,
-    onSecondaryContainer = TextPrimary,
-    tertiary = NeonCyan,
-    onTertiary = DarkBackground,
-    background = DarkBackground,
-    onBackground = TextPrimary,
+    primary = ElectricMagenta,
+    secondary = GoldAccent,
+    background = DeepVioletBg,
     surface = DarkSurface,
-    onSurface = TextPrimary,
-    surfaceVariant = DarkCard,
-    onSurfaceVariant = TextSecondary,
-    outline = DarkCardElevated,
-    error = PkRed,
-    onError = TextPrimary
+    onPrimary = Color.White,
+    onSecondary = Color.Black,
+    onBackground = TextLight,
+    onSurface = TextLight
 )
 
 @Composable
-fun ZyvoTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
-) {
-    val colorScheme = DarkColorScheme
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as? Activity)?.window
-            if (window != null) {
-                window.statusBarColor = DarkBackground.toArgb()
-                window.navigationBarColor = DarkBackground.toArgb()
-                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
-            }
-        }
-    }
-
+fun ZyvoLiveTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
+        colorScheme = DarkColorScheme,
         content = content
     )
 }
