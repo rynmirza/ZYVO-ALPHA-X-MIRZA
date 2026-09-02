@@ -916,6 +916,53 @@ fun UserProfileSheet(
                             }
                         }
                     }
+                } else {
+                    // Own Profile Actions for Bottom Sheet
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                onDismiss()
+                                Toast.makeText(context, "Edit Profile", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = primaryAccent),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("profile_sheet_edit_btn")
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.EditNote, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Edit Profile", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Profile Link", "https://zyvo.live/user/${user.userId}"))
+                                Toast.makeText(context, "Profile link copied to clipboard!", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, NeonCyan),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurface),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("profile_sheet_share_btn")
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Share, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Share Link", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))

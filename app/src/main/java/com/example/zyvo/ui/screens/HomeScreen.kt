@@ -364,20 +364,13 @@ fun HeaderCircleIconButton(
 // --------------------------------------------------------------------------------
 @Composable
 fun HeroPromoBanner(onGoLiveClick: () -> Unit) {
+    val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
+            .height(185.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        Color(0xFF260538),
-                        Color(0xFF4C0E56),
-                        Color(0xFF1C0738)
-                    )
-                )
-            )
+            .background(Color(0xFF090712))
             .border(
                 width = 1.dp,
                 brush = Brush.horizontalGradient(
@@ -386,109 +379,17 @@ fun HeroPromoBanner(onGoLiveClick: () -> Unit) {
                 shape = RoundedCornerShape(20.dp)
             )
             .clickable { onGoLiveClick() }
+            .testTag("hero_promo_banner")
     ) {
-        // Starry night ambient canvas background
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                color = Color(0xFFFF00AA).copy(alpha = 0.15f),
-                radius = size.width * 0.3f,
-                center = Offset(size.width * 0.2f, size.height * 0.5f)
-            )
-            drawCircle(
-                color = Color(0xFFFFD700).copy(alpha = 0.15f),
-                radius = size.width * 0.3f,
-                center = Offset(size.width * 0.85f, size.height * 0.5f)
-            )
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left Mascot Graphic: Cartoon Mascot Cat holding pink camera
-            MascotGraphic(modifier = Modifier.size(95.dp))
-
-            // Center Text & CTA Button
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "BE A STAR",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White,
-                    letterSpacing = 0.5.sp
-                )
-                Text(
-                    text = "BE ON TOP",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White,
-                    letterSpacing = 0.5.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Show your talent, get noticed\nand win amazing rewards!",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFFD4C7FF),
-                    textAlign = TextAlign.Center,
-                    lineHeight = 11.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Color(0xFFFF007A), Color(0xFF8A00D4))
-                            )
-                        )
-                        .padding(horizontal = 18.dp, vertical = 5.dp)
-                ) {
-                    Text(
-                        text = "JOIN NOW",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White
-                    )
-                }
-            }
-
-            // Right Crown Trophy Visual with Golden Wings
-            CrownTrophyGraphic(modifier = Modifier.size(90.dp))
-        }
-
-        // Carousel Indicator Dots at bottom center
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(16.dp)
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFFF007A))
-            )
-            repeat(3) {
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.35f))
-                )
-            }
-        }
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data("https://weekly-ivory-vny1v5d4.edgeone.dev/")
+                .crossfade(true)
+                .build(),
+            contentDescription = "BE A STAR BE ON TOP",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -601,7 +502,7 @@ fun QuickAccessCard(
                 onClick = { onSelectCategory(null) }
             )
             QuickAccessItem(
-                icon = Icons.Default.Call,
+                icon = Icons.Default.FlashOn,
                 iconBgGradient = listOf(Color(0xFF7209B7), Color(0xFFB5179E)),
                 label = "PK Battle",
                 isSelected = selectedCategory == RoomType.PK_BATTLE,
@@ -615,7 +516,7 @@ fun QuickAccessCard(
                 onClick = { onSelectCategory(RoomType.AUDIO_STAGE) }
             )
             QuickAccessItem(
-                icon = Icons.Default.Star,
+                icon = Icons.Default.Stars,
                 iconBgGradient = listOf(Color(0xFF4361EE), Color(0xFF4CC9F0)),
                 label = "New",
                 isSelected = selectedCategory == RoomType.MULTI_GUEST,
@@ -1317,62 +1218,179 @@ fun FeatureCard(
 
 @Composable
 fun PkBattleVisualGraphic() {
-    Box(contentAlignment = Alignment.Center) {
-        Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-            Text("👩🏻", fontSize = 28.sp)
-            Text("👩🏽", fontSize = 28.sp)
-        }
-        Box(
+    val context = LocalContext.current
+    Box(
+        modifier = Modifier.size(75.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Left Female Host Avatar
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data("https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80")
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
             modifier = Modifier
+                .size(38.dp)
+                .offset(x = (-14).dp)
                 .clip(CircleShape)
-                .background(Color(0xFFFF007A))
-                .padding(horizontal = 4.dp, vertical = 1.dp)
-        ) {
-            Text("VS", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color.White)
-        }
-    }
-}
+                .border(1.5.dp, Color(0xFF00F0FF), CircleShape)
+        )
 
-@Composable
-fun GoLiveVisualGraphic() {
-    Box(contentAlignment = Alignment.Center) {
+        // Right Female Host Avatar
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data("https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80")
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(38.dp)
+                .offset(x = 14.dp)
+                .clip(CircleShape)
+                .border(1.5.dp, Color(0xFFFF007A), CircleShape)
+        )
+
+        // Electric VS Badge in Center
         Box(
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .zIndex(3f)
+                .clip(CircleShape)
                 .background(
                     Brush.linearGradient(
-                        listOf(Color(0xFFFF007A), Color(0xFF7209B7))
+                        listOf(Color(0xFFFFD700), Color(0xFFFF8C00))
                     )
-                ),
-            contentAlignment = Alignment.Center
+                )
+                .border(1.dp, Color.White, CircleShape)
+                .padding(horizontal = 6.dp, vertical = 2.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Videocam,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
+            Text(
+                text = "VS",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF300000)
             )
         }
     }
 }
 
 @Composable
-fun TopGiftingVisualGraphic() {
-    Box(contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🎁", fontSize = 32.sp)
-            Text("💕", fontSize = 10.sp, modifier = Modifier.offset(y = (-6).dp))
+fun GoLiveVisualGraphic() {
+    Box(
+        modifier = Modifier.size(75.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Neon Glow background
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFFFF007A), Color(0xFF7209B7), Color(0xFF4CC9F0))
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Videocam,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(26.dp)
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
+fun TopGiftingVisualGraphic() {
+    Box(
+        modifier = Modifier.size(75.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // 3D Gift Box illustration with floating hearts
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFF9D4EDD), Color(0xFF7209B7))
+                    )
+                )
+                .border(1.5.dp, Color(0xFFFF529A), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "🎁", fontSize = 28.sp)
+        }
+        Text(
+            text = "💖",
+            fontSize = 14.sp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = (-4).dp, y = 2.dp)
+        )
+        Text(
+            text = "💕",
+            fontSize = 12.sp,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .offset(x = 4.dp, y = (-2).dp)
+        )
+    }
+}
+
+@Composable
 fun DailyTaskVisualGraphic() {
-    Box(contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("📋", fontSize = 30.sp)
-            Text("🪙", fontSize = 12.sp, modifier = Modifier.offset(y = (-6).dp))
+    Box(
+        modifier = Modifier.size(75.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // 3D Task Clipboard & Coins illustration
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0xFF8B5CF6))
+                .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "📋", fontSize = 26.sp)
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .offset(x = (-2).dp, y = 2.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFFFD700))
+                .padding(3.dp)
+        ) {
+            Text(text = "⭐", fontSize = 10.sp)
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 2.dp, y = (-2).dp)
+                .clip(CircleShape)
+                .background(Color(0xFFFFD700))
+                .padding(3.dp)
+        ) {
+            Text(text = "🪙", fontSize = 10.sp)
         }
     }
 }

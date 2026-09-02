@@ -2,6 +2,7 @@ package com.example.zyvo
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.*
@@ -104,6 +105,24 @@ fun ZyvoApp(
             }
         )
     } else {
+        BackHandler(
+            enabled = currentRoom != null || activeSubView != null || activeDmPeerUserId != null || selectedUserProfile != null || showCreateRoomSheet || showVipStoreDialog || showRechargeDialog || showWithdrawalDialog || showTransactionsDialog || showSettingsDialog || selectedTab != 0
+        ) {
+            when {
+                activeDmPeerUserId != null -> viewModel.closeDmChat()
+                selectedUserProfile != null -> viewModel.closeUserProfile()
+                showCreateRoomSheet -> viewModel.setShowCreateRoomSheet(false)
+                showVipStoreDialog -> viewModel.setShowVipStoreDialog(false)
+                showRechargeDialog -> viewModel.setShowRechargeDialog(false)
+                showWithdrawalDialog -> viewModel.setShowWithdrawalDialog(false)
+                showTransactionsDialog -> viewModel.setShowTransactionsDialog(false)
+                showSettingsDialog -> viewModel.setShowSettingsDialog(false)
+                currentRoom != null -> viewModel.leaveRoom()
+                activeSubView != null -> activeSubView = null
+                selectedTab != 0 -> viewModel.setSelectedTab(0)
+            }
+        }
+
         Scaffold(
             containerColor = DarkBackground,
         bottomBar = {
@@ -155,6 +174,39 @@ fun ZyvoApp(
                     onFollowUser = { userId -> viewModel.followUser(userId) },
                     onUnfollowUser = { userId -> viewModel.unfollowUser(userId) }
                 )
+            } else if (activeSubView == "other_user_profile" && selectedUserProfile != null) {
+                val profile = selectedUserProfile!!
+                val isSelf = profile.userId == currentUserProfile.userId
+                UserProfileScreen(
+                    userProfile = profile,
+                    coinBalance = if (isSelf) userCoinBalance else profile.diamondsEarnedTotal,
+                    beansBalance = if (isSelf) userBeansBalance else 85230,
+                    followingCount = profile.followingCount,
+                    isOwnProfile = isSelf,
+                    isFollowing = profile.isFollowedByCurrentUser,
+                    onFollowToggle = {
+                        if (profile.isFollowedByCurrentUser) {
+                            viewModel.unfollowUser(profile.userId)
+                        } else {
+                            viewModel.followUser(profile.userId)
+                        }
+                    },
+                    onOpenDm = {
+                        val uid = profile.userId
+                        viewModel.closeUserProfile()
+                        activeSubView = null
+                        viewModel.openDmChat(uid)
+                    },
+                    onBack = { activeSubView = null },
+                    onOpenVipStore = { activeSubView = "vip_center" },
+                    onOpenRecharge = { activeSubView = "wallet" },
+                    onOpenWithdrawal = { viewModel.setShowWithdrawalDialog(true) },
+                    onOpenTransactions = { viewModel.setShowTransactionsDialog(true) },
+                    onOpenSettings = { viewModel.setShowSettingsDialog(true) },
+                    onOpenAnalytics = { activeSubView = "rankings" },
+                    onOpenUserDetail = { userId -> viewModel.openUserProfile(userId) },
+                    onLogout = if (isSelf) { { viewModel.logout() } } else null
+                )
             } else {
                 when (selectedTab) {
                     0 -> HomeScreen(
@@ -191,6 +243,7 @@ fun ZyvoApp(
                         coinBalance = userCoinBalance,
                         beansBalance = userBeansBalance,
                         followingCount = followingUserIds.size,
+                        isOwnProfile = true,
                         onOpenVipStore = { activeSubView = "vip_center" },
                         onOpenRecharge = { activeSubView = "wallet" },
                         onOpenWithdrawal = { viewModel.setShowWithdrawalDialog(true) },
