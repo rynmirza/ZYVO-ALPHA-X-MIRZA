@@ -8,7 +8,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -467,12 +469,18 @@ fun HomeScreen(
         )
     }
 
-    // Search Modal
+    // Search Full Screen Window
     if (showSearchDialog) {
         HomeSearchModal(
             searchQuery = searchQuery,
             onSearchQueryChange = onSearchQueryChange,
             topHosts = topLiveHosts,
+            popularHosts = popularHosts,
+            rooms = rooms,
+            onRoomClick = { room ->
+                showSearchDialog = false
+                onRoomClick(room)
+            },
             onHostClick = { hostId ->
                 showSearchDialog = false
                 onOpenUserDetail?.invoke(hostId)
@@ -484,6 +492,11 @@ fun HomeScreen(
     // Notifications Modal
     if (showNotificationsDialog) {
         HomeNotificationsModal(
+            rooms = rooms,
+            onRoomClick = { room ->
+                showNotificationsDialog = false
+                onRoomClick(room)
+            },
             onDismiss = { showNotificationsDialog = false },
             onOpenCeoProfile = {
                 showNotificationsDialog = false
@@ -1307,41 +1320,8 @@ fun PopularHostCrownItem(
                     else -> null
                 },
                 size = 96.dp,
-                isLive = true
+                isLive = false
             )
-
-            // Popularity Pill Badge Overlay at bottom
-            Box(
-                modifier = Modifier
-                    .offset(y = 2.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.horizontalGradient(
-                            if (hostGender.equals("Male", ignoreCase = true)) 
-                                listOf(Color(0xFFFFB300), Color(0xFFFF8F00))
-                            else 
-                                listOf(Color(0xFFFF007A), Color(0xFF7928CA))
-                        )
-                    )
-                    .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                    .padding(horizontal = 7.dp, vertical = 2.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Visibility,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(9.dp)
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        text = host.popularity,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -2188,146 +2168,711 @@ fun FounderSpotlightCard(
 }
 
 // --------------------------------------------------------------------------------
-// 9. HOME SEARCH MODAL
+// 9. HOME SEARCH FULL SCREEN WINDOW
 // --------------------------------------------------------------------------------
+data class SearchHostModel(
+    val id: String,
+    val name: String,
+    val category: String,
+    val viewerOrPopularity: String,
+    val imageUrl: String,
+    val gender: String = "Female",
+    val isCrown: Boolean = false
+)
+
 @Composable
 fun HomeSearchModal(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    topHosts: List<TopHostItem>,
+    topHosts: List<TopHostItem> = emptyList(),
+    popularHosts: List<PopularHostItem> = emptyList(),
+    rooms: List<LiveRoom> = emptyList(),
+    onRoomClick: ((LiveRoom) -> Unit)? = null,
     onHostClick: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
+    var selectedFilterCategory by remember { mutableStateOf("All") }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        BackHandler {
+            onDismiss()
+        }
+
+        Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .border(1.dp, Color(0xFFFF007A).copy(alpha = 0.5f), RoundedCornerShape(24.dp)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF150A26))
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0F041D),
+                            Color(0xFF150A26),
+                            Color(0xFF0D0218)
+                        )
+                    )
+                ),
+            color = Color.Transparent
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(18.dp)
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
+                // 1. TOP HEADER WITH BACK BUTTON & SEARCH INPUT
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Search Hosts & Rooms",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.1f))
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
                             tint = Color.White
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        placeholder = {
+                            Text(
+                                "Search live rooms, top hosts, IDs...",
+                                color = Color.White.copy(alpha = 0.4f),
+                                fontSize = 13.sp
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                tint = NeonCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { onSearchQueryChange("") },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear",
+                                        tint = Color.White.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        textStyle = TextStyle(color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            focusedContainerColor = Color(0xFF22113D),
+                            unfocusedContainerColor = Color(0xFF1C0D33)
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        shape = RoundedCornerShape(26.dp)
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Type name, category, or ID...", color = Color.Gray) },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = NeonCyan)
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { onSearchQueryChange("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
-                            }
+                // 2. FILTER CATEGORY CHIPS
+                val filterCategories = listOf("All", "🔥 Live Rooms", "👑 Top Hosts", "⚔️ PK Arena", "🎙️ Audio Stage")
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items(filterCategories) { cat ->
+                        val isSelected = selectedFilterCategory == cat
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    if (isSelected) Brush.horizontalGradient(listOf(Color(0xFFFF007A), Color(0xFF7928CA)))
+                                    else Brush.horizontalGradient(listOf(Color(0xFF22113D), Color(0xFF1C0D33)))
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSelected) NeonCyan else Color.White.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .clickable { selectedFilterCategory = cat }
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = cat,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f)
+                            )
                         }
-                    },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NeonCyan,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF22113D),
-                        unfocusedContainerColor = Color(0xFF22113D)
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "Suggested Stars",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = GoldAccent
-                )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // 3. MAIN SCROLLABLE CONTENT: SUGGESTIONS or SEARCH RESULTS
                 LazyColumn(
-                    modifier = Modifier.heightIn(max = 240.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    val filtered = if (searchQuery.isBlank()) {
-                        topHosts
-                    } else {
-                        topHosts.filter {
-                            it.name.contains(searchQuery, ignoreCase = true) ||
-                                    it.category.contains(searchQuery, ignoreCase = true)
-                        }
-                    }
+                    val isQueryActive = searchQuery.isNotBlank()
 
-                    items(filtered) { host ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF23143E))
-                                .clickable { onHostClick(host.id) }
-                                .padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AsyncImage(
-                                model = host.imageUrl,
-                                contentDescription = host.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = host.name,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = host.category,
-                                    fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.6f)
-                                )
+                    if (!isQueryActive) {
+                        // ==========================================
+                        // A. SUGGESTED LIVE ROOMS (1:1 Square Cards)
+                        // ==========================================
+                        if (selectedFilterCategory == "All" || selectedFilterCategory == "🔥 Live Rooms" || selectedFilterCategory == "⚔️ PK Arena" || selectedFilterCategory == "🎙️ Audio Stage") {
+                            item {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("🔥", fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Suggested Live Rooms",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        }
+                                        Text(
+                                            text = "${rooms.size} Active",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NeonCyan
+                                        )
+                                    }
+
+                                    // 1:1 SQUARE CARDS LAZY ROW
+                                    val filteredRooms = rooms.filter { r ->
+                                        when (selectedFilterCategory) {
+                                            "⚔️ PK Arena" -> r.roomType == RoomType.PK_BATTLE || r.category.contains("PK", ignoreCase = true)
+                                            "🎙️ Audio Stage" -> r.roomType == RoomType.AUDIO_STAGE || r.roomType == RoomType.MULTI_GUEST
+                                            else -> true
+                                        }
+                                    }
+
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        items(filteredRooms) { room ->
+                                            SquareLiveRoomCard(
+                                                room = room,
+                                                onClick = { onRoomClick?.invoke(room) }
+                                            )
+                                        }
+                                    }
+                                }
                             }
-                            Text(
-                                text = "👀 ${host.viewerCount}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NeonCyan
+                        }
+
+                        // ==========================================
+                        // B. SUGGESTED TOP HOSTS & STARS (1:1 Square Cards)
+                        // ==========================================
+                        if (selectedFilterCategory == "All" || selectedFilterCategory == "👑 Top Hosts") {
+                            item {
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("👑", fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Top Hosts & Stars",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = GoldAccent
+                                            )
+                                        }
+                                        Text(
+                                            text = "Trending Now",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFFF007A)
+                                        )
+                                    }
+
+                                    // Combine topHosts and popularHosts into 1:1 Square Host Cards
+                                    val combinedHosts = (topHosts.map { host ->
+                                        SearchHostModel(
+                                            id = host.id,
+                                            name = host.name,
+                                            category = host.category,
+                                            viewerOrPopularity = "👀 ${host.viewerCount}",
+                                            imageUrl = host.imageUrl,
+                                            gender = "Female"
+                                        )
+                                    } + popularHosts.map { pop ->
+                                        SearchHostModel(
+                                            id = pop.id,
+                                            name = pop.name,
+                                            category = "Popularity ${pop.popularity}",
+                                            viewerOrPopularity = "💎 ${pop.popularity}",
+                                            imageUrl = pop.imageUrl,
+                                            gender = pop.gender,
+                                            isCrown = pop.isGoldCrown
+                                        )
+                                    }).distinctBy { it.id }
+
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        items(combinedHosts) { hostItem ->
+                                            SquareHostCard(
+                                                host = hostItem,
+                                                onClick = { onHostClick(hostItem.id) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // ==========================================
+                        // C. SEARCH ACTIVE RESULTS (1:1 SQUARE CARDS)
+                        // ==========================================
+                        val matchingRooms = rooms.filter { r ->
+                            r.title.contains(searchQuery, ignoreCase = true) ||
+                            r.hostName.contains(searchQuery, ignoreCase = true) ||
+                            r.category.contains(searchQuery, ignoreCase = true) ||
+                            r.id.contains(searchQuery, ignoreCase = true)
+                        }
+
+                        val matchingTopHosts = topHosts.filter { h ->
+                            h.name.contains(searchQuery, ignoreCase = true) ||
+                            h.category.contains(searchQuery, ignoreCase = true) ||
+                            h.id.contains(searchQuery, ignoreCase = true)
+                        }.map { h ->
+                            SearchHostModel(
+                                id = h.id,
+                                name = h.name,
+                                category = h.category,
+                                viewerOrPopularity = "👀 ${h.viewerCount}",
+                                imageUrl = h.imageUrl,
+                                gender = "Female"
                             )
+                        }
+
+                        val matchingPopularHosts = popularHosts.filter { p ->
+                            p.name.contains(searchQuery, ignoreCase = true) ||
+                            p.id.contains(searchQuery, ignoreCase = true)
+                        }.map { p ->
+                            SearchHostModel(
+                                id = p.id,
+                                name = p.name,
+                                category = "Popularity ${p.popularity}",
+                                viewerOrPopularity = "💎 ${p.popularity}",
+                                imageUrl = p.imageUrl,
+                                gender = p.gender,
+                                isCrown = p.isGoldCrown
+                            )
+                        }
+
+                        val allMatchingHosts = (matchingTopHosts + matchingPopularHosts).distinctBy { it.id }
+
+                        if (matchingRooms.isEmpty() && allMatchingHosts.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("🔍", fontSize = 48.sp)
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = "No results found for \"$searchQuery\"",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "Try searching for names like 'Nusrat', 'Ansharah', 'Alpha', or 'PK'",
+                                            fontSize = 12.sp,
+                                            color = Color.White.copy(alpha = 0.5f),
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Render Matching Live Rooms
+                            if (matchingRooms.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        text = "Matching Live Rooms (${matchingRooms.size})",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NeonCyan,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    )
+                                }
+
+                                items(matchingRooms.chunked(2)) { pair ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        for (room in pair) {
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                SquareLiveRoomCard(
+                                                    room = room,
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    onClick = { onRoomClick?.invoke(room) }
+                                                )
+                                            }
+                                        }
+                                        if (pair.size == 1) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Render Matching Hosts
+                            if (allMatchingHosts.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        text = "Matching Hosts (${allMatchingHosts.size})",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent,
+                                        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
+                                    )
+                                }
+
+                                items(allMatchingHosts.chunked(2)) { pair ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        for (host in pair) {
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                SquareHostCard(
+                                                    host = host,
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    onClick = { onHostClick(host.id) }
+                                                )
+                                            }
+                                        }
+                                        if (pair.size == 1) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * 1:1 Square Live Room Card Component
+ */
+@Composable
+fun SquareLiveRoomCard(
+    room: LiveRoom,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val coverUrl = room.roomCoverUrl ?: room.hostAvatarUrl ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80"
+
+    Card(
+        modifier = modifier
+            .width(148.dp)
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(18.dp))
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    listOf(
+                        Color(0xFFFF007A).copy(alpha = 0.6f),
+                        Color(0xFF00F0FF).copy(alpha = 0.4f)
+                    )
+                ),
+                shape = RoundedCornerShape(18.dp)
+            )
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E0E38))
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(coverUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = room.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.35f),
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .align(Alignment.TopStart)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .border(0.5.dp, Color.White.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF0055))
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "👀 ${room.viewerCount}",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+
+            if (room.roomType == RoomType.PK_BATTLE) {
+                Box(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .align(Alignment.TopEnd)
+                        .clip(CircleShape)
+                        .background(Brush.horizontalGradient(listOf(Color(0xFFFF007A), Color(0xFF7928CA))))
+                        .padding(4.dp)
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(com.example.zyvo.R.drawable.ic_pk_battle_custom)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "PK",
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clip(CircleShape)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = room.hostName,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = getVerifiedTickColor(room.hostGender, room.hostName),
+                        modifier = Modifier.size(11.dp)
+                    )
+                }
+
+                Text(
+                    text = room.title,
+                    fontSize = 9.sp,
+                    color = Color.White.copy(alpha = 0.75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 1:1 Square Host / Star Card Component
+ */
+@Composable
+fun SquareHostCard(
+    host: SearchHostModel,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Card(
+        modifier = modifier
+            .width(148.dp)
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(18.dp))
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    listOf(
+                        GoldAccent.copy(alpha = 0.7f),
+                        Color(0xFFFF8800).copy(alpha = 0.5f)
+                    )
+                ),
+                shape = RoundedCornerShape(18.dp)
+            )
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E0E38))
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(host.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = host.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.25f),
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .align(Alignment.TopStart)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            if (host.gender.equals("Male", ignoreCase = true)) listOf(GoldAccent, Color(0xFFFF8800))
+                            else listOf(Color(0xFFFF007A), Color(0xFF7928CA))
+                        )
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = if (host.gender.equals("Male", ignoreCase = true)) "👑 KING" else "👸 QUEEN", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .align(Alignment.TopEnd)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = host.viewerOrPopularity,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NeonCyan
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = host.name,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = getVerifiedTickColor(host.gender, host.name),
+                        modifier = Modifier.size(11.dp)
+                    )
+                }
+
+                Text(
+                    text = host.category,
+                    fontSize = 9.sp,
+                    color = Color.White.copy(alpha = 0.75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -2347,15 +2892,22 @@ data class UpdateNotificationItem(
     val message: String,
     val time: String,
     val isUnread: Boolean = false,
-    val actionType: String = "NONE"
+    val actionType: String = "NONE",
+    val categoryGroup: String = "ALL", // "LIVE", "OFFICIAL", "REWARDS"
+    val roomCoverUrl: String? = null,
+    val roomId: String? = null
 )
 
 @Composable
 fun HomeNotificationsModal(
-    onDismiss: () -> Unit,
-    onOpenCeoProfile: () -> Unit
+    rooms: List<LiveRoom> = emptyList(),
+    onRoomClick: ((LiveRoom) -> Unit)? = null,
+    onOpenCeoProfile: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     var animateIn by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf("ALL") } // "ALL", "LIVE", "OFFICIAL", "REWARDS"
+    var isAllRead by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         animateIn = true
@@ -2387,102 +2939,27 @@ fun HomeNotificationsModal(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.65f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    handleClose()
-                },
-            contentAlignment = Alignment.CenterEnd
+                .background(Color(0xFF130926))
         ) {
             AnimatedVisibility(
                 visible = animateIn,
-                enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(200)),
-                exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(200)),
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.85f)
-                    .widthIn(max = 380.dp)
+                enter = fadeIn(tween(220)) + slideInVertically(initialOffsetY = { it / 4 }, animationSpec = tween(220)),
+                exit = fadeOut(tween(200)) + slideOutVertically(targetOffsetY = { it / 4 }, animationSpec = tween(200)),
+                modifier = Modifier.fillMaxSize()
             ) {
-                Card(
+                Surface(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { /* Intercept touches so they don't click backdrop or Home screen */ },
-                    shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF130926)),
-                    border = BorderStroke(
-                        1.dp,
-                        Brush.verticalGradient(
-                            listOf(
-                                GoldAccent.copy(alpha = 0.5f),
-                                ElectricMagenta.copy(alpha = 0.3f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+                        .systemBarsPadding(),
+                    color = Color(0xFF130926)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(18.dp)
+                            .padding(16.dp)
                     ) {
-                        // Header
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "Updates",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .background(ElectricMagenta)
-                                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "5 NEW",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-
-                            // Close X Button (DO NOT use a clock icon)
-                            IconButton(
-                                onClick = { handleClose() },
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.12f))
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close Updates Panel",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-
-                        Divider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(14.dp))
-
                         // Vertical list of update items
-                        val updateItems = remember {
+                        val updateItemsList = remember {
                             listOf(
                                 UpdateNotificationItem(
                                     id = "ceo_announcement",
@@ -2495,7 +2972,8 @@ fun HomeNotificationsModal(
                                     message = "Welcome to ZYVO Live! Platform partnerships, SVIP rewards & founder desk perks are active.",
                                     time = "Just now",
                                     isUnread = true,
-                                    actionType = "OPEN_CEO"
+                                    actionType = "OPEN_CEO",
+                                    categoryGroup = "OFFICIAL"
                                 ),
                                 UpdateNotificationItem(
                                     id = "pk_live",
@@ -2507,7 +2985,10 @@ fun HomeNotificationsModal(
                                     badgeColor = Color(0xFFFF0055),
                                     message = "1v1 PK Battle is LIVE against Drama Queen! 245.8K viewers online.",
                                     time = "5m ago",
-                                    isUnread = true
+                                    isUnread = true,
+                                    categoryGroup = "LIVE",
+                                    roomCoverUrl = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
+                                    roomId = "1"
                                 ),
                                 UpdateNotificationItem(
                                     id = "stream_ansharah",
@@ -2519,7 +3000,10 @@ fun HomeNotificationsModal(
                                     badgeColor = ElectricMagenta,
                                     message = "Broadcasted 'Acoustic Chill & Midnight Music Lounge'!",
                                     time = "12m ago",
-                                    isUnread = true
+                                    isUnread = true,
+                                    categoryGroup = "LIVE",
+                                    roomCoverUrl = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=80",
+                                    roomId = "2"
                                 ),
                                 UpdateNotificationItem(
                                     id = "gift_nusrat",
@@ -2530,7 +3014,8 @@ fun HomeNotificationsModal(
                                     badgeText = "GIFT REWARD",
                                     badgeColor = Color(0xFFFFB800),
                                     message = "Sent you a Lucky Rose +50 Coins bonus in the live stream!",
-                                    time = "25m ago"
+                                    time = "25m ago",
+                                    categoryGroup = "REWARDS"
                                 ),
                                 UpdateNotificationItem(
                                     id = "vip_alpha",
@@ -2541,7 +3026,8 @@ fun HomeNotificationsModal(
                                     badgeText = "SVIP 9",
                                     badgeColor = Color(0xFF00F0FF),
                                     message = "Unlocked SVIP Tier 9 Supreme badge privileges & Golden Dragon frame.",
-                                    time = "1h ago"
+                                    time = "1h ago",
+                                    categoryGroup = "OFFICIAL"
                                 ),
                                 UpdateNotificationItem(
                                     id = "audio_ayesha",
@@ -2552,23 +3038,334 @@ fun HomeNotificationsModal(
                                     badgeText = "AUDIO LOUNGE",
                                     badgeColor = Color(0xFF9D4EDD),
                                     message = "Opened Audio Live Room 'Late Night Storytelling & Music'!",
-                                    time = "2h ago"
+                                    time = "2h ago",
+                                    categoryGroup = "LIVE",
+                                    roomCoverUrl = "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80",
+                                    roomId = "3"
                                 )
                             )
+                        }
+
+                        val unreadCount = if (isAllRead) 0 else updateItemsList.count { it.isUnread }
+
+                        val filteredItems = remember(selectedCategory, isAllRead) {
+                            updateItemsList.map { item ->
+                                if (isAllRead) item.copy(isUnread = false) else item
+                            }.filter { item ->
+                                if (selectedCategory == "ALL") true else item.categoryGroup == selectedCategory
+                            }
+                        }
+
+                        // Header Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Updates",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                if (unreadCount > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(ElectricMagenta)
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "$unreadCount NEW",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (unreadCount > 0) {
+                                    Text(
+                                        text = "Mark Read",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable { isAllRead = true }
+                                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+
+                                // Close X Button
+                                IconButton(
+                                    onClick = { handleClose() },
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.12f))
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close Updates Panel",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Divider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
+
+                        // Organized Category Filter Tabs
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf(
+                                "ALL" to "All",
+                                "LIVE" to "🔴 Live Rooms",
+                                "OFFICIAL" to "👑 Official & SVIP",
+                                "REWARDS" to "🎁 Rewards"
+                            ).forEach { (catId, label) ->
+                                val isSelected = selectedCategory == catId
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(if (isSelected) ElectricMagenta else Color.White.copy(alpha = 0.08f))
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) GoldAccent else Color.Transparent,
+                                            RoundedCornerShape(16.dp)
+                                        )
+                                        .clickable { selectedCategory = catId }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
                         }
 
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(updateItems, key = { it.id }) { item ->
+                            // Section: 1:1 Live Rooms Header & Row
+                            if (selectedCategory == "ALL" || selectedCategory == "LIVE") {
+                                item {
+                                    val liveRoomsList = if (rooms.isNotEmpty()) rooms else remember {
+                                        listOf(
+                                            LiveRoom(
+                                                id = "1",
+                                                title = "1v1 PK Battle Live",
+                                                creatorIdentity = "king_of_kings",
+                                                hostName = "King Of King's",
+                                                hostGender = "Male",
+                                                viewerCount = 245800,
+                                                roomCoverUrl = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80"
+                                            ),
+                                            LiveRoom(
+                                                id = "2",
+                                                title = "Acoustic Chill Music",
+                                                creatorIdentity = "ansharah_gahni",
+                                                hostName = "Ansharah Gahni",
+                                                hostGender = "Female",
+                                                viewerCount = 12500,
+                                                roomCoverUrl = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&auto=format&fit=crop&q=80"
+                                            ),
+                                            LiveRoom(
+                                                id = "3",
+                                                title = "Late Night Audio Lounge",
+                                                creatorIdentity = "ayesha_live",
+                                                hostName = "Ayesha Live",
+                                                hostGender = "Female",
+                                                viewerCount = 8200,
+                                                roomCoverUrl = "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&auto=format&fit=crop&q=80"
+                                            )
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.padding(bottom = 6.dp)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(bottom = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = "🔥 Live Rooms in Updates",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = GoldAccent
+                                            )
+                                            Text(
+                                                text = "1:1 Live Cards",
+                                                fontSize = 9.sp,
+                                                color = Color.White.copy(alpha = 0.5f)
+                                            )
+                                        }
+
+                                        LazyRow(
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            contentPadding = PaddingValues(end = 4.dp)
+                                        ) {
+                                            items(liveRoomsList, key = { it.id }) { room ->
+                                                // 1:1 Square Room Card
+                                                Card(
+                                                    modifier = Modifier
+                                                        .size(105.dp) // 1:1 Square
+                                                        .clip(RoundedCornerShape(14.dp))
+                                                        .border(
+                                                            1.dp,
+                                                            Brush.linearGradient(
+                                                                listOf(
+                                                                    ElectricMagenta.copy(alpha = 0.6f),
+                                                                    GoldAccent.copy(alpha = 0.4f)
+                                                                )
+                                                            ),
+                                                            RoundedCornerShape(14.dp)
+                                                        )
+                                                        .clickable {
+                                                            handleClose()
+                                                            onRoomClick?.invoke(room)
+                                                        },
+                                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B0F33))
+                                                ) {
+                                                    Box(modifier = Modifier.fillMaxSize()) {
+                                                        AsyncImage(
+                                                            model = room.roomCoverUrl ?: room.hostAvatarUrl,
+                                                            contentDescription = room.title,
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            contentScale = ContentScale.Crop
+                                                        )
+                                                        // Dark Bottom Gradient
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .fillMaxSize()
+                                                                .background(
+                                                                    Brush.verticalGradient(
+                                                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.88f)),
+                                                                        startY = 40f
+                                                                    )
+                                                                )
+                                                        )
+                                                        // Top Live Badge
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopStart)
+                                                                .padding(4.dp)
+                                                                .clip(RoundedCornerShape(4.dp))
+                                                                .background(Color.Red)
+                                                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "1:1 LIVE",
+                                                                fontSize = 7.sp,
+                                                                fontWeight = FontWeight.Black,
+                                                                color = Color.White
+                                                            )
+                                                        }
+
+                                                        // Viewer Badge
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopEnd)
+                                                                .padding(4.dp)
+                                                                .clip(RoundedCornerShape(4.dp))
+                                                                .background(Color.Black.copy(alpha = 0.65f))
+                                                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "👀 ${room.viewerCount}",
+                                                                fontSize = 7.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = Color.White
+                                                            )
+                                                        }
+
+                                                        // Bottom info
+                                                        Column(
+                                                            modifier = Modifier
+                                                                .align(Alignment.BottomStart)
+                                                                .padding(6.dp)
+                                                        ) {
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                Text(
+                                                                    text = room.hostName,
+                                                                    fontSize = 9.sp,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    color = Color.White,
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis,
+                                                                    modifier = Modifier.weight(1f, fill = false)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(2.dp))
+                                                                Icon(
+                                                                    imageVector = Icons.Default.Verified,
+                                                                    contentDescription = null,
+                                                                    tint = getVerifiedTickColor(room.hostGender, room.hostName),
+                                                                    modifier = Modifier.size(9.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Notification Updates List
+                            items(filteredItems, key = { it.id }) { item ->
                                 UpdateNotificationCard(
                                     item = item,
                                     onClick = {
                                         if (item.actionType == "OPEN_CEO") {
                                             handleClose()
                                             onOpenCeoProfile()
+                                        } else if (item.categoryGroup == "LIVE") {
+                                            val targetRoom = rooms.find { it.id == item.roomId } ?: LiveRoom(
+                                                id = item.roomId ?: "1",
+                                                title = item.message,
+                                                creatorIdentity = item.username.lowercase().replace(" ", "_"),
+                                                hostName = item.username,
+                                                viewerCount = 12500,
+                                                hostGender = item.gender,
+                                                roomCoverUrl = item.roomCoverUrl ?: item.avatarUrl
+                                            )
+                                            handleClose()
+                                            onRoomClick?.invoke(targetRoom)
                                         }
+                                    },
+                                    onJoinRoom = { roomId ->
+                                        val targetRoom = rooms.find { it.id == roomId } ?: LiveRoom(
+                                            id = roomId,
+                                            title = item.message,
+                                            creatorIdentity = item.username.lowercase().replace(" ", "_"),
+                                            hostName = item.username,
+                                            viewerCount = 12500,
+                                            hostGender = item.gender,
+                                            roomCoverUrl = item.roomCoverUrl ?: item.avatarUrl
+                                        )
+                                        handleClose()
+                                        onRoomClick?.invoke(targetRoom)
                                     }
                                 )
                             }
@@ -2583,7 +3380,8 @@ fun HomeNotificationsModal(
 @Composable
 fun UpdateNotificationCard(
     item: UpdateNotificationItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onJoinRoom: ((String) -> Unit)? = null
 ) {
     Box(
         modifier = Modifier
@@ -2600,98 +3398,173 @@ fun UpdateNotificationCard(
             .clickable { onClick() }
             .padding(12.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.Top,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Thumbnail / Avatar
-            Box(contentAlignment = Alignment.BottomEnd) {
-                AsyncImage(
-                    model = item.avatarUrl,
-                    contentDescription = item.username,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .border(1.5.dp, item.badgeColor, CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-                if (item.isUnread) {
-                    Box(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Thumbnail / Avatar
+                Box(contentAlignment = Alignment.BottomEnd) {
+                    AsyncImage(
+                        model = item.avatarUrl,
+                        contentDescription = item.username,
                         modifier = Modifier
-                            .size(10.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
-                            .background(ElectricMagenta)
-                            .border(1.5.dp, Color(0xFF130926), CircleShape)
+                            .border(1.5.dp, item.badgeColor, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    if (item.isUnread) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(ElectricMagenta)
+                                .border(1.5.dp, Color(0xFF130926), CircleShape)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Text(
+                                text = item.username,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Verified,
+                                contentDescription = "Verified",
+                                tint = getVerifiedTickColor(item.gender, item.username),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Text(
+                            text = item.time,
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(3.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(item.badgeColor)
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = item.badgeText,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (item.badgeColor == GoldAccent || item.badgeColor == Color(0xFFFFB800)) Color.Black else Color.White
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = item.message,
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.85f),
+                        lineHeight = 15.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+            // 1:1 Square Room Cover Preview Card if roomCoverUrl is present!
+            if (!item.roomCoverUrl.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .border(1.dp, ElectricMagenta.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .clickable {
+                            item.roomId?.let { roomId ->
+                                onJoinRoom?.invoke(roomId)
+                            } ?: onClick()
+                        }
+                        .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f, fill = false)
-                    ) {
-                        Text(
-                            text = item.username,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.Verified,
-                            contentDescription = "Verified",
-                            tint = getVerifiedTickColor(item.gender, item.username),
-                            modifier = Modifier.size(12.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    Text(
-                        text = item.time,
-                        fontSize = 10.sp,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(3.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 1:1 Square Image Thumbnail
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(item.badgeColor)
-                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                            .size(56.dp) // 1:1 Square
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        AsyncImage(
+                            model = item.roomCoverUrl,
+                            contentDescription = "1:1 Room Cover",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(2.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(Color.Red)
+                                .padding(horizontal = 3.dp, vertical = 1.dp)
+                        ) {
+                            Text("1:1 LIVE", fontSize = 6.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Active Stream Room",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldAccent
+                        )
+                        Text(
+                            text = "Tap to enter stream now",
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.6f)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Brush.horizontalGradient(listOf(ElectricMagenta, Color(0xFFFF0055))))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
-                            text = item.badgeText,
-                            fontSize = 8.sp,
+                            text = "JOIN ▶",
+                            fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
-                            color = if (item.badgeColor == GoldAccent || item.badgeColor == Color(0xFFFFB800)) Color.Black else Color.White
+                            color = Color.White
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = item.message,
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.85f),
-                    lineHeight = 15.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         }
     }

@@ -174,7 +174,7 @@ fun ZyvoApp(
                     onFollowUser = { userId -> viewModel.followUser(userId) },
                     onUnfollowUser = { userId -> viewModel.unfollowUser(userId) }
                 )
-            } else if (activeSubView == "other_user_profile" && selectedUserProfile != null) {
+            } else if (selectedUserProfile != null) {
                 val profile = selectedUserProfile!!
                 val isSelf = profile.userId == currentUserProfile.userId
                 UserProfileScreen(
@@ -197,7 +197,7 @@ fun ZyvoApp(
                         activeSubView = null
                         viewModel.openDmChat(uid)
                     },
-                    onBack = { activeSubView = null },
+                    onBack = { viewModel.closeUserProfile() },
                     onOpenVipStore = { activeSubView = "vip_center" },
                     onOpenRecharge = { activeSubView = "wallet" },
                     onOpenWithdrawal = { viewModel.setShowWithdrawalDialog(true) },
@@ -278,20 +278,7 @@ fun ZyvoApp(
                 )
             }
 
-            if (selectedUserProfile != null) {
-                UserProfileSheet(
-                    user = selectedUserProfile!!,
-                    isSelf = selectedUserProfile!!.userId == currentUserProfile.userId,
-                    onDismiss = { viewModel.closeUserProfile() },
-                    onFollow = { viewModel.followUser(selectedUserProfile!!.userId) },
-                    onUnfollow = { viewModel.unfollowUser(selectedUserProfile!!.userId) },
-                    onOpenDm = { viewModel.openDmChat(selectedUserProfile!!.userId) },
-                    onBlock = { viewModel.blockUser(selectedUserProfile!!.userId) },
-                    onReport = { viewModel.reportUser(selectedUserProfile!!.userId, "Inappropriate Content") },
-                    onJoinLive = { roomId -> viewModel.joinRoom(roomId) },
-                    onOpenUserDetail = { userId -> viewModel.openUserProfile(userId) }
-                )
-            }
+
 
             if (showVipStoreDialog) {
                 VipStoreDialog(

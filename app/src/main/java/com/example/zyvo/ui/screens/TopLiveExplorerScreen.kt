@@ -312,6 +312,11 @@ fun TopLiveExplorerScreen(
             searchQuery = searchQuery,
             onSearchQueryChange = { searchQuery = it },
             topHosts = topLiveHosts,
+            rooms = rooms,
+            onRoomClick = { room ->
+                showSearchDialog = false
+                onRoomClick(room)
+            },
             onHostClick = { hostId ->
                 showSearchDialog = false
                 onOpenUserDetail?.invoke(hostId)
@@ -323,6 +328,11 @@ fun TopLiveExplorerScreen(
     // Notifications Modal
     if (showNotificationsDialog) {
         HomeNotificationsModal(
+            rooms = rooms,
+            onRoomClick = { room ->
+                showNotificationsDialog = false
+                onRoomClick(room)
+            },
             onDismiss = { showNotificationsDialog = false },
             onOpenCeoProfile = {
                 showNotificationsDialog = false

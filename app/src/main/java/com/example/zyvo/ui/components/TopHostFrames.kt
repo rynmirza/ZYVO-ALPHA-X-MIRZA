@@ -111,7 +111,7 @@ fun AnimatedHostAvatar(
     // Colors
     val frameGlowColor = if (isMale) Color(0xFFFFC107) else Color(0xFFFF4081)
     val accentColor = if (isMale) Color(0xFFFFD700) else Color(0xFFFF69B4)
-    val frameDrawable = if (isMale) R.drawable.ic_king_gold_frame else R.drawable.ic_queen_pink_frame
+    val frameDrawable = if (isMale) R.drawable.ic_gold_male_frame_custom else R.drawable.ic_gold_female_frame_custom
 
     // Infinite Animations
     val infiniteTransition = rememberInfiniteTransition(label = "HostFrameAnimation")
@@ -197,7 +197,7 @@ fun AnimatedHostAvatar(
         )
 
         // 2. Profile Photo (Centered, clipped perfectly inside circle)
-        val photoSize = size * 0.62f
+        val photoSize = size * 0.55f
         Box(
             modifier = Modifier
                 .size(photoSize)
@@ -381,7 +381,7 @@ fun PopularHostCard(
                 name = name,
                 rank = rank,
                 size = 98.dp,
-                isLive = true
+                isLive = false
             )
 
             // Rank Badge if Top 1, 2, 3
@@ -416,28 +416,6 @@ fun PopularHostCard(
                 contentDescription = "Verified",
                 tint = getVerifiedTickColor(gender, name),
                 modifier = Modifier.size(12.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Viewer Count / Diamond Power
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Visibility,
-                contentDescription = "Viewers",
-                tint = Color(0xFFFFD700),
-                modifier = Modifier.size(10.dp)
-            )
-            Spacer(modifier = Modifier.width(2.dp))
-            Text(
-                text = viewerCount,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFB0ACC0)
             )
         }
     }

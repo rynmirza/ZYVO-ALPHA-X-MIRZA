@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -39,6 +41,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.zyvo.model.UserProfile
 import com.example.zyvo.model.VipTier
+import com.example.zyvo.ui.components.AnimatedHostAvatar
 import com.example.zyvo.ui.theme.*
 
 // Exact ZYVO Dark Theme Palette
@@ -95,9 +98,10 @@ fun UserProfileScreen(
     val likesText = if (userProfile.likesCount > 1000) "2.6M" else "${userProfile.likesCount}"
     val popularityText = "1.2M"
 
-    Scaffold(
-        containerColor = GalaxyDarkBg
-    ) { innerPadding ->
+    CosmicBackground {
+        Scaffold(
+            containerColor = Color.Transparent
+        ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -270,6 +274,7 @@ fun UserProfileScreen(
         }
     }
 }
+}
 
 // ============================================================================
 // 1. PROFILE HEADER SECTION
@@ -416,40 +421,18 @@ private fun ProfileHeaderSection(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top
             ) {
-                // Left: Premium Avatar with Gold Crown Frame
+                // Left: Premium Avatar with custom crown frame matching top 100% perfect profile page!
                 Box(
-                    modifier = Modifier.size(80.dp),
+                    modifier = Modifier.width(105.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Gold Aura Glow Ring
-                    Box(
-                        modifier = Modifier
-                            .size(76.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, Brush.linearGradient(listOf(GoldAccentColor, Color(0xFFFF9100))), CircleShape)
+                    AnimatedHostAvatar(
+                        imageUrl = avatarUrl,
+                        gender = gender,
+                        name = displayName,
+                        size = 105.dp,
+                        isLive = false
                     )
-
-                    // Avatar Image Core
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(avatarUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = displayName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(CircleShape)
-                    )
-
-                    // 3D Golden Crown on top left
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .offset(x = (-4).dp, y = (-6).dp)
-                    ) {
-                        Text("👑", fontSize = 24.sp)
-                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -1453,4 +1436,71 @@ private fun DividerHorizontal() {
             .height(1.dp)
             .background(Color(0xFF1E1730))
     )
+}
+
+@Composable
+private fun CosmicBackground(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFF090317)) // Extremely dark purple space base
+    ) {
+        // Draw some beautiful nebula-like glows using layered radial gradients
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            // Purple nebula on top left
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF330954).copy(alpha = 0.5f), Color.Transparent),
+                    center = Offset(size.width * 0.1f, size.height * 0.2f),
+                    radius = size.width * 0.9f
+                )
+            )
+            // Blue/Indigo nebula on middle right
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF130938).copy(alpha = 0.4f), Color.Transparent),
+                    center = Offset(size.width * 0.8f, size.height * 0.5f),
+                    radius = size.width * 0.8f
+                )
+            )
+            // Magenta nebula on bottom left
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color(0xFF570633).copy(alpha = 0.25f), Color.Transparent),
+                    center = Offset(size.width * 0.2f, size.height * 0.8f),
+                    radius = size.width * 0.7f
+                )
+            )
+        }
+        
+        // Add random twinkling stars in background
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val starPositions = listOf(
+                Offset(0.12f, 0.08f), Offset(0.25f, 0.15f), Offset(0.72f, 0.06f),
+                Offset(0.85f, 0.22f), Offset(0.05f, 0.42f), Offset(0.92f, 0.48f),
+                Offset(0.18f, 0.65f), Offset(0.78f, 0.72f), Offset(0.35f, 0.88f),
+                Offset(0.88f, 0.92f), Offset(0.55f, 0.28f), Offset(0.64f, 0.58f),
+                Offset(0.48f, 0.76f)
+            )
+            starPositions.forEach { pos ->
+                val x = pos.x * size.width
+                val y = pos.y * size.height
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.65f),
+                    radius = 1.2f,
+                    center = Offset(x, y)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.2f),
+                    radius = 3.5f,
+                    center = Offset(x, y)
+                )
+            }
+        }
+        
+        content()
+    }
 }
