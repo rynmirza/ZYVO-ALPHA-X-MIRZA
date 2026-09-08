@@ -37,6 +37,24 @@ jobs:
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
+      - name: Setup Google Services Configuration
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.ZYVO_GOOGLE_SERVICES_JSON }}
+        run: |
+          mkdir -p app
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "Restoring app/google-services.json from repository secret ZYVO_GOOGLE_SERVICES_JSON..."
+            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          else
+            echo "Secret ZYVO_GOOGLE_SERVICES_JSON is not set or empty. Checking for existing app/google-services.json..."
+          fi
+
+          if [ ! -f app/google-services.json ]; then
+            echo "::error::app/google-services.json is missing! Please add the ZYVO_GOOGLE_SERVICES_JSON secret in GitHub Repository Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          echo "app/google-services.json successfully verified."
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace || gradle assembleDebug
 
