@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User Profiles
+    // Anyone can read profiles; only the authenticated user can create or update their own profile document.
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Live Rooms & WebRTC Signaling
+    match /liveRooms/{roomId} {
+      // Authenticated users and guests may browse live room metadata
+      allow read: if true;
+
+      // Only authenticated users can create a room with their own UID as host
+      allow create: if request.auth != null && (request.resource.data.hostId == request.auth.uid || request.resource.data.creatorIdentity == request.auth.uid);
+
+      // Only the room host can update room status or delete the room
+      allow update: if request.auth != null && (resource.data.hostId == request.auth.uid || resource.data.creatorIdentity == request.auth.uid);
+      allow delete: if request.auth != null && (resource.data.hostId == request.auth.uid || resource.data.creatorIdentity == request.auth.uid);
+
+      // WebRTC Signaling: SDP Offer and Answer subcollection
+      match /signaling/{docId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+
+      // Host ICE Candidates subcollection
+      match /hostCandidates/{candidateId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+
+      // Viewer ICE Candidates subcollection
+      match /viewerCandidates/{candidateId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+    }
+  }
+}

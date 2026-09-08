@@ -1,84 +1,249 @@
-# Zyvo Live 🔮
+![zyvo-logo](assets/zyvo_logo.jpg)
 
-**Zyvo Live** is a state-of-the-art, high-fidelity Android application built with modern **Jetpack Compose** and **Kotlin**. It delivers a premium, real-time creator sovereignty stage featuring interactive broadcasting screens, comparative PK battle arenas, multi-guest lounges, and high-fidelity audio stage simulations.
 
-The entire experience is wrapped in a dark luxury celestial universe with a deep violet canvas, neon magenta highlights, and prestigious gold accents.
+-----
+
+# ZYVO LIVE | Official Realtime Live Streaming Platform 👑
+
+
+## 🔥🔥🔥 Latest News
+
+- Feb 1, 2025: QuickMeet-1 is here 🎉. We've released the Complete Backend SDK code — check it out!
+---
+
+## 🚀 Overview
+
+LiveStreamX is a powerful backend SDK that supports a wide range of live streaming scenarios including:
+
+- 🔹 **Single Live**
+- 🔹 **Audio Live**
+- 🔹 **Multi-Guest Live**
+- 🔹 **PK Battle Mode**
+
+With an emphasis on **real-time engagement**, **moderation**, and **customization**, LiveStreamX brings studio-grade features to your fingertips — ready for integration across **mobile** and **web** platforms.
 
 ---
 
-## 🌟 Core Architecture & Technical Specifications
+## 🧩 Supported Live Modes & Features
 
-- **UI Framework:** 100% Jetpack Compose with Material Design 3 (M3).
-- **Architecture Pattern:** MVVM (Model-View-ViewModel) with structured unidirectional state flow using Kotlin Coroutines and `StateFlow`.
-- **Image Loading:** Coil (`io.coil-kt:coil-compose`) for asynchronous, high-performance image caching and rendering.
-- **Dependency Management:** Centralized **Gradle Version Catalog** (`gradle/libs.versions.toml`) to ensure absolute build consistency and strict version compatibility.
-- **Build System:** Gradle (Kotlin DSL) targetting **SDK 34 (Android 14)** with Java 17 toolchains.
+### 1. 🎭 Single Live with Multiple People Joining in Call
 
----
+A single host goes live — viewers can **request** or be **invited** to join via **video/audio calls**.
 
-## ✨ Features & Visual Highlights
-
-### 🎨 1. High-Fidelity Cover Animations
-- **Auroral Gradients:** Fully custom-rendered `AnimatedCoverBanner` using linear brushing gradients that shift diagonally on a loop.
-- **Overlapping Avatars:** Circular profile avatars with dynamic borders (`ElectricMagenta` and `GoldAccent`) overlapping the animated banners to deliver a modern, high-contrast, edge-to-edge look.
-
-### ⚔️ 2. Dynamic Stream Rooms & Broadcast Modes
-- **Single Live Broadcaster:** Features clean video simulation overlays, active chat overlays, and full interactive support.
-- **Executive PK Battles:** Supports dual real-time visual streaming cages. Users can tap to support Team Alpha or Team Beta, adjusting comparative scores and updating progress indicators dynamically.
-- **Multi-Guest Lounges:** Integrates multi-video grid panels featuring profile avatars, names, and customized interactive status frames.
-- **VIP Audio Stages:** Incorporates spatial seat grids where users can request locked, open, or VIP sound stage seats with mic-status indicators.
-
-### 🔮 3. Unified Premium Gems Currency
-- **Gems Integration:** Configured with our signature **Gems** visual asset across the application, replacing all generic placeholders with a highly polished gemstone logo.
-- **Dynamic Gifting Core:** Supports simulated coin conversion to Gems. Dropping premium gifts in active stream rooms triggers visual particle bursts and updates the broadcaster's overall Gem collection in real time.
-
-### 📱 4. Executive Navigation & Analytics Screens
-- **Explore Lounge:** Displays active live rooms categorized by stream types via sleek filter pills.
-- **Sovereign Wallet:** Allows creators to browse rechargeable packages, exchange coins, and track transactions.
-- **Studio Analytics:** Tracks broad creator metrics including weekly hours streamed, fans reached, and historic Gem revenue with sleek visual summaries.
-- **Creator Profile:** Displays the user's custom biography, SVIP membership tier progress, and active prestige accomplishments.
+#### ✅ Features:
+- **🛠️ Live Room Creation**: Name, categorize, and manage privacy settings.
+- **📲 Join & Invite**: Audience requests + host invitations with approval system.
+- **👥 Multi-Guest Call Support**: Up to 4–6 guests with adaptive layout.
+- **💬 Live Chat**: Real-time chat with emoji/GIF support.
+- **🧑‍💼 Audience Management**: Mute, block, or remove participants.
+- **🎁 Gifts & Reactions**: Virtual gifts + animated emoji reactions.
+- **🛡️ Moderation Tools**: Delete comments, clear chats, and report.
+- **📡 Technical Excellence**: Adaptive bitrate + real-time sync.
 
 ---
 
-## 🏗️ Project Structure
+### 2. 🎤 Single Live
 
+One host. One stream. Unlimited engagement.
+
+#### ✅ Features:
+- **🛠️ Customizable Room Setup**
+- **📹 High-Quality Video**: 720p/1080p, beautify filters, lighting control.
+- **💬 Chat System**: Emojis, GIFs, real-time updates.
+- **🧑‍💼 Viewer Management**: Block/mute options.
+- **🎁 Gifts & Leaderboard**: Real-time ranking for top gifters.
+- **📣 Social Sharing**: Share streams across platforms.
+- **💸 Monetization**: Pay-per-view/private room options.
+- **📊 Host Analytics**: Viewer stats, gift count, earnings.
+
+---
+
+### 3. ⚔️ PK Live (Player Knockout)
+
+Two hosts go live head-to-head in a **battle of engagement**!
+
+#### ✅ Features:
+- **🔗 PK Matchmaking**: Invite another host to duel.
+- **⏳ Countdown Start**
+- **🎯 Voting & Gifts**: Audience votes and gift counts influence the winner.
+- **🖥️ Split-Screen Display**: Dual host layout.
+- **🏆 Live Score + Winner Animation**
+- **💬 Audience Interaction**: Chat, reactions, and support.
+- **🛡️ Individual Moderation**: Each host manages their chat.
+
+---
+
+### 4. 🎧 Audio Live
+
+Go live with your **voice** and let the vibes flow.
+
+#### ✅ Features:
+- **🎙️ Audio-Only Rooms**: With full room customization.
+- **🗣️ Join Requests**: Listeners can request speaking slots.
+- **🔇 Audio Controls**: Mute/unmute, remove speakers.
+- **💬 Listener Chat**: Real-time messaging with engagement tools.
+- **🎁 Voice Gifts**: Audio-friendly gifting experience.
+- **🎶 Sound Effects**: Play music or fun SFX during stream.
+- **🔊 Audio Tech**: Noise suppression + echo cancellation.
+
+---
+
+## 🧰 Core Modules Included
+
+This SDK ships with robust support for:
+
+- ✅ **Single Live**  
+- ✅ **Audio Live**  
+- ✅ **Multi-Guest Live**  
+- ✅ **PK Battle Mode**  
+
+Everything you need is bundled into a modular and scalable backend structure — ready for plug-and-play deployment!
+
+---
+
+## 🌍 Global Features (Available in All Modes)
+
+- **📼 Recording & Playback**: Replay streams on demand.
+- **🔐 Security**: End-to-end encryption + password-protected streams.
+- **🧪 Cross-Platform Support**: Android, iOS, and web-ready APIs.
+
+---
+
+## 🧑‍💻 Developer-Friendly
+
+- 🧩 Easy to Integrate  
+- 📚 Clean API Documentation (Coming soon)  
+- 🌐 RESTful APIs + WebSocket Support  
+- 🛠️ Built with scalability in mind
+
+---
+
+## 📦 Getting Started
+
+Coming soon — full setup and integration guide!
+
+---
+
+## 👨‍🎨 Designed For:
+
+- 🧑‍🎤 Content Creators  
+- 🎓 Ed-Tech Platforms  
+- 🧑‍🏫 Virtual Events & Workshops  
+- 🧑‍💼 Businesses & Influencers  
+- 🕹️ Gaming Streamers  
+
+---
+
+## ✨ Inspired By
+
+> Platforms like **Bigo Live**, **Jigocloud**, and **Agora** — reimagined with flexibility, creativity, and control.
+
+---
+
+Made with ❤️ by **Founder Rayan Mirza** for the future of interactive live streaming.
+
+---
+
+## 👑 Ownership & Leadership
+
+**Zyvo Live** is proudly owned and founded by **Rayan Mirza**. All rights, branding, architecture, and platform assets are fully owned and directed by **Founder Rayan Mirza**.
+
+---
+
+## Feel free to Contribute 😁🛠 Be it code or non-code 😉
+## Steps to follow 📃
+
+## Contents
+
+[1. Fork the project 🔪](https://github.com/zyvolive/zyvo/edit/master/README.md#1-fork-the-project-) <br>
+[2. Clone the forked repository 📥](https://github.com/zyvolive/zyvo/edit/master/README.md#2-clone-the-forked-repository-)<br>
+[3. Let us Setup 🔧⚙️](https://github.com/zyvolive/zyvo/edit/master/README.md#3-let-us-setup-%EF%B8%8F)<br>
+[4. Keep in sync always♻️ (best practice🤝🏻) ](https://github.com/zyvolive/zyvo/edit/master/README.md#4-keep-in-sync-always%EF%B8%8F-best-practice)<br>
+[5. Ready for the contribution 🌝](https://github.com/zyvolive/zyvo#5-ready-for-the-contribution-)<br>
+[6. Installing packages required 📦📥](https://github.com/zyvolive/zyvo#6-installing-packages-required-)<br>
+
+### 1. Fork the project 🔪
+
+   [Fork Button](https://github.com/zyvolive/zyvo)
+
+### 2. Clone the forked repository 📥
+
+  You need to clone (download) it to your local machine using below command in terminal
 ```bash
-/
-├── app/
-│   ├── build.gradle.kts           # App-level dependencies & compilation rules
-│   └── src/main/
-│       ├── AndroidManifest.xml    # Entry points and permissions (Camera, Mic, Internet)
-│       ├── java/com/example/zyvo/
-│       │   ├── MainActivity.kt    # Main App navigation host & screens
-│       │   └── ui/theme/
-│       │       └── Theme.kt       # Centered luxury theme declarations & palette
-│       └── res/
-│           └── values/
-│               └── strings.xml    # Unified app resource strings
-├── gradle/
-│   └── libs.versions.toml         # Centralized dependencies and versions catalog
-├── build.gradle.kts               # Project-level plugins register
-├── settings.gradle.kts            # Project settings & module includes
-└── README.md                      # Comprehensive project documentation
+   $ git clone https://github.com/Your_Username/zyvo.git
+```
+> This makes a local copy of the repository in your machine 📂
+
+  Once you have cloned the `zyvo` repository in Github, move➡️ to that folder first using the change directory `cd` command on Linux/ Mac/ Windows
+```bash
+   $ cd zyvo
 ```
 
----
+### 3. Let us Setup 🔧⚙️
+Run the following commands to verify that your _local copy_ has a reference to your _forked remote repository_ on Github
+```bash
+   $ git remote -v
+```
+It should display the below output
+```
+  origin  https://github.com/Your_Username/zyvo.git (fetch)
+  origin  https://github.com/Your_Username/zyvo.git (push)
+```
 
-## 🛠️ Compilation and Setup
+Now, let us add the reference to the original `zyvo` repository using the below command 🔙
+```bash
+  $ git remote add upstream https://github.com/zyvolive/zyvo.git
+```
+> The above command creates a new remote as `upstream`
 
-To build and compile the application successfully, use the following standard Gradle tasks:
+To Verify the changes run the below command
+```bash
+  $ git remote -v
+```
+Output in console ☑️:
+```
+  origin    https://github.com/Your_Username/zyvo.git (fetch)
+  origin    https://github.com/Your_Username/zyvo.git (push)
+  upstream  https://github.com/zyvolive/zyvo.git (fetch)
+  upstream  https://github.com/zyvolive/zyvo.git (push)
+```
 
-1. **Clean Project Build:**
-   ```bash
-   gradle clean
-   ```
+### 4. Keep in sync always♻️ (best practice🤝🏻) 
+It is a better practice to keep the `local copy` in sync with the `original repository` and to stay updated with the latest changes. Run the below commands before making changes or in regular intervals to stay updated with the `base` branch
 
-2. **Assemble Debug Application Package (APK):**
-   ```bash
-   gradle :app:assembleDebug
-   ```
+```
+  # Fetch all remote repositories and delete any deleted remote branches
+  $ git fetch --all --prune
 
-3. **Verify Implementation Integrity:**
-   ```bash
-   gradle compileDebugKotlin
-   ```
+  # Switch to the master branch
+  $ git checkout master
+
+  # Reset the local master branch to match the upstream repository's master branch
+  $ git reset --hard upstream/master
+
+  # Push changes to your forked zyvo repo
+  $ git push origin master
+```
+
+### 5. Ready for the contribution 🌝
+Once you are done with the above steps, you are ready to contribute to the `Zyvo Live` project code. Check out the `issues` tab of the `original repository` and solve them. Once you are done with your changes, submit your efforts with a `pull request`
+
+## Hold on! Instructions are not done yet 🌚
+
+### 6. Installing packages required 📦📥
+
+To install the required packages run the below command
+```bash
+   npm install
+```
+## Help us improve the project better 📈🤗
+
+Please discuss your questions, features, or concerns directly with **Founder Rayan Mirza** before creating a new issue. 😉
+
+_Please `STAR`⭐️ the repository if you like the content and code_**😁
+
+_Also enable the `WATCH`👁 button to keep watching the updates on the repository_**😉
+
+💯💻🧑‍💻👩‍💻 Happy Contributing with Founder Rayan Mirza 👩‍💻🧑‍💻💻💯
+
+![zyvo-logo](assets/zyvo_logo.jpg)
