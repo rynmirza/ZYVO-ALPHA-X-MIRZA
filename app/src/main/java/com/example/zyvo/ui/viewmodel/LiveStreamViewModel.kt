@@ -230,6 +230,11 @@ class LiveStreamViewModel(
                     _webRtcError.value = err
                 }
             }
+            viewModelScope.launch {
+                repository.currentFilter.collect { filter ->
+                    client.setActiveFilter(filter)
+                }
+            }
         }
     }
 

@@ -70,6 +70,7 @@ fun VideoFeedTile(
         BeautifyFilter.VINTAGE_FILM -> Color(0x2E8B5E3C)
         BeautifyFilter.STUDIO_PRO -> Color(0x2200F5D4)
         BeautifyFilter.BLACK_WHITE -> Color(0x66000000)
+        BeautifyFilter.VIGNETTE_90S -> Color.Transparent
     }
 
     Box(

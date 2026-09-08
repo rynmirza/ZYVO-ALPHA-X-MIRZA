@@ -2,6 +2,7 @@ package com.example.zyvo.rtc
 
 import android.content.Context
 import android.util.Log
+import com.example.zyvo.model.BeautifyFilter
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +49,16 @@ class WebRtcClient(
     private var _localVideoTrack: VideoTrack? = null
     val localVideoTrack: VideoTrack?
         get() = _localVideoTrack
+
+    @Volatile
+    private var activeFilter: BeautifyFilter = BeautifyFilter.ORIGINAL
+
+    private var beautyFilter: NinetiesVignetteBeautyFilter? = null
+
+    fun setActiveFilter(filter: BeautifyFilter) {
+        activeFilter = filter
+        Log.d(TAG, "WebRtcClient active filter updated to: $filter")
+    }
 
     // Audio capture & tracks
     private var audioSource: AudioSource? = null
@@ -139,7 +150,31 @@ class WebRtcClient(
             val source = factory.createVideoSource(capturer.isScreencast)
             videoSource = source
 
-            capturer.initialize(helper, context.applicationContext, source.capturerObserver)
+            val proxyObserver = object : CapturerObserver {
+                override fun onCapturerStarted(success: Boolean) {
+                    source.capturerObserver.onCapturerStarted(success)
+                }
+
+                override fun onCapturerStopped() {
+                    source.capturerObserver.onCapturerStopped()
+                }
+
+                override fun onFrameCaptured(frame: VideoFrame) {
+                    val processedFrame = if (activeFilter == BeautifyFilter.VIGNETTE_90S && frame.buffer is VideoFrame.TextureBuffer) {
+                        try {
+                            processVideoFrame(frame)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to apply 90s beauty filter, using original frame", e)
+                            frame
+                        }
+                    } else {
+                        frame
+                    }
+                    source.capturerObserver.onFrameCaptured(processedFrame)
+                }
+            }
+
+            capturer.initialize(helper, context.applicationContext, proxyObserver)
             try {
                 capturer.startCapture(1280, 720, 30)
             } catch (e: Exception) {
@@ -590,6 +625,26 @@ class WebRtcClient(
             Log.e(TAG, "Error disposing video track/source", e)
         }
 
+        beautyFilter?.let { filter ->
+            val handler = surfaceTextureHelper?.handler
+            if (handler != null) {
+                handler.post {
+                    try {
+                        filter.release()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error releasing beauty filter", e)
+                    }
+                }
+            } else {
+                try {
+                    filter.release()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error releasing beauty filter without handler", e)
+                }
+            }
+            beautyFilter = null
+        }
+
         try {
             _localAudioTrack?.dispose()
             _localAudioTrack = null
@@ -771,5 +826,39 @@ class WebRtcClient(
         override fun onRenegotiationNeeded() {
             Log.d(TAG, "WebRTC Renegotiation needed")
         }
+    }
+
+    private fun processVideoFrame(frame: VideoFrame): VideoFrame {
+        val textureBuffer = frame.buffer as VideoFrame.TextureBuffer
+        val width = textureBuffer.width
+        val height = textureBuffer.height
+
+        var filter = beautyFilter
+        if (filter == null) {
+            filter = NinetiesVignetteBeautyFilter()
+            beautyFilter = filter
+        }
+
+        val matrix = textureBuffer.transformMatrix
+        val transformFloatArray = RendererCommon.convertMatrixFromAndroidGraphicsMatrix(matrix)
+
+        val processedTextureId = filter.process(
+            inputTextureId = textureBuffer.textureId,
+            width = width,
+            height = height,
+            transformMatrix = transformFloatArray
+        )
+
+        val processedBuffer = TextureBufferImpl(
+            width, height,
+            VideoFrame.TextureBuffer.Type.RGB,
+            processedTextureId,
+            matrix,
+            surfaceTextureHelper?.handler ?: android.os.Handler(android.os.Looper.myLooper()!!),
+            YuvConverter(),
+            Runnable {}
+        )
+
+        return VideoFrame(processedBuffer, frame.rotation, frame.timestampNs)
     }
 }

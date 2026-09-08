@@ -51,5 +51,6 @@ enum class BeautifyFilter(val displayName: String, val icon: String, val descrip
     CYBERPUNK("Cyber Neon", "🌆", "Electric purple & cyan neon tones"),
     VINTAGE_FILM("Retro Film", "🎞️", "Muted 90s aesthetic grain"),
     STUDIO_PRO("Studio Light", "💡", "High contrast clean studio lighting"),
-    BLACK_WHITE("Noir Velvet", "🎬", "Cinematic monochrome shadow depth")
+    BLACK_WHITE("Noir Velvet", "🎬", "Cinematic monochrome shadow depth"),
+    VIGNETTE_90S("90s Vignette Beauty", "📸", "Nostalgic premium beauty skin and vignette filter")
 }

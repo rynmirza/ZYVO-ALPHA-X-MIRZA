@@ -17,6 +17,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.face.FaceDetection
+import com.google.mlkit.vision.face.FaceDetector
+import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.google.mlkit.vision.face.FaceLandmark
+
 enum class MediaPermissionStatus {
     NOT_DETERMINED,
     ALL_GRANTED,
@@ -64,9 +70,24 @@ class LocalMediaManager(private val context: Context) {
     var onVideoFrameCaptured: ((ImageProxy) -> Unit)? = null
     var onAudioFrameCaptured: ((ShortArray, Int) -> Unit)? = null
 
+    private val faceDetector: FaceDetector by lazy {
+        val options = FaceDetectorOptions.Builder()
+            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+            .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
+            .setContourMode(FaceDetectorOptions.CONTOUR_MODE_NONE)
+            .build()
+        FaceDetection.getClient(options)
+    }
+
     init {
         // Wire up camera callbacks
         cameraCapturer.onFrameCaptured = { frame ->
+            try {
+                processFaceDetection(frame)
+            } catch (e: Exception) {
+                Log.w(tag, "Face detection error", e)
+            }
             onVideoFrameCaptured?.invoke(frame)
         }
         cameraCapturer.onError = { error ->
@@ -251,6 +272,74 @@ class LocalMediaManager(private val context: Context) {
         _mediaState.update { it.copy(mediaError = null) }
     }
 
+    @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+    private fun processFaceDetection(imageProxy: ImageProxy) {
+        val mediaImage = imageProxy.image ?: return
+        val rotation = imageProxy.imageInfo.rotationDegrees
+        val inputImage = InputImage.fromMediaImage(mediaImage, rotation)
+
+        faceDetector.process(inputImage)
+            .addOnSuccessListener { faces ->
+                if (faces.isNotEmpty()) {
+                    val face = faces[0]
+                    val isRotated = rotation == 90 || rotation == 270
+                    val width = if (isRotated) imageProxy.height else imageProxy.width
+                    val height = if (isRotated) imageProxy.width else imageProxy.height
+
+                    val boundingBox = face.boundingBox
+                    FaceTrackerState.hasFace = true
+                    FaceTrackerState.faceBoundingBox.set(
+                        boundingBox.left.toFloat() / width,
+                        boundingBox.top.toFloat() / height,
+                        boundingBox.right.toFloat() / width,
+                        boundingBox.bottom.toFloat() / height
+                    )
+
+                    FaceTrackerState.faceCenter.set(
+                        boundingBox.centerX().toFloat() / width,
+                        boundingBox.centerY().toFloat() / height
+                    )
+
+                    val leftEye = face.getLandmark(FaceLandmark.LEFT_EYE)
+                    if (leftEye != null) {
+                        FaceTrackerState.leftEye.set(leftEye.position.x / width, leftEye.position.y / height)
+                    }
+
+                    val rightEye = face.getLandmark(FaceLandmark.RIGHT_EYE)
+                    if (rightEye != null) {
+                        FaceTrackerState.rightEye.set(rightEye.position.x / width, rightEye.position.y / height)
+                    }
+
+                    val leftCheek = face.getLandmark(FaceLandmark.LEFT_CHEEK)
+                    if (leftCheek != null) {
+                        FaceTrackerState.leftCheek.set(leftCheek.position.x / width, leftCheek.position.y / height)
+                    }
+
+                    val rightCheek = face.getLandmark(FaceLandmark.RIGHT_CHEEK)
+                    if (rightCheek != null) {
+                        FaceTrackerState.rightCheek.set(rightCheek.position.x / width, rightCheek.position.y / height)
+                    }
+
+                    val mouthLeft = face.getLandmark(FaceLandmark.MOUTH_LEFT)
+                    val mouthRight = face.getLandmark(FaceLandmark.MOUTH_RIGHT)
+                    val mouthBottom = face.getLandmark(FaceLandmark.MOUTH_BOTTOM)
+                    if (mouthLeft != null && mouthRight != null) {
+                        FaceTrackerState.mouthCenter.set(
+                            (mouthLeft.position.x + mouthRight.position.x) / 2f / width,
+                            (mouthLeft.position.y + mouthRight.position.y) / 2f / height
+                        )
+                    } else if (mouthBottom != null) {
+                        FaceTrackerState.mouthCenter.set(mouthBottom.position.x / width, (mouthBottom.position.y - 10f) / height)
+                    }
+                } else {
+                    FaceTrackerState.reset()
+                }
+            }
+            .addOnFailureListener {
+                FaceTrackerState.reset()
+            }
+    }
+
     /**
      * Releases all hardware handles, threads, and scopes cleanly.
      */
@@ -258,6 +347,11 @@ class LocalMediaManager(private val context: Context) {
         stopMedia()
         cameraCapturer.release()
         microphoneCapturer.release()
+        try {
+            faceDetector.close()
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to close face detector", e)
+        }
         activeLifecycleOwner = null
         activeSurfaceProvider = null
         Log.d(tag, "LocalMediaManager completely released")
