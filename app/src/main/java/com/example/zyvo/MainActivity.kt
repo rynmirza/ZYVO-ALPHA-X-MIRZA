@@ -101,7 +101,10 @@ fun ZyvoApp(
     if (!isLoggedIn) {
         LoginScreen(
             onLoginSuccess = { name, email, avatar, photoUrl ->
-                viewModel.loginWithGoogle(name, email, avatar, photoUrl)
+                viewModel.loginWithGoogle(null, name, email, avatar, photoUrl)
+            },
+            onGoogleSignIn = { idToken, name, email, avatar, photoUrl ->
+                viewModel.loginWithGoogle(idToken, name, email, avatar, photoUrl)
             },
             onCreateCustomProfile = { name, username, email, avatar, photoUrl, bio, gender, location ->
                 viewModel.createCustomProfileAndLogin(name, username, email, avatar, photoUrl, bio, gender, location)

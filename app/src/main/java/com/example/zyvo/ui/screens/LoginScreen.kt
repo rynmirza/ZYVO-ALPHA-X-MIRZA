@@ -1,6 +1,7 @@
 package com.example.zyvo.ui.screens
 
 import android.app.Activity
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -52,6 +53,7 @@ import java.util.UUID
 @Composable
 fun LoginScreen(
     onLoginSuccess: (displayName: String, email: String, avatarEmoji: String, photoUrl: String?) -> Unit,
+    onGoogleSignIn: ((idToken: String?, displayName: String, email: String, avatarEmoji: String, photoUrl: String?) -> Unit)? = null,
     onCreateCustomProfile: (displayName: String, username: String, email: String, avatarEmoji: String, photoUrl: String?, bio: String, gender: String, location: String) -> Unit = { d, u, e, a, p, b, g, l ->
         onLoginSuccess(d, e, a, p)
     },
@@ -121,11 +123,17 @@ fun LoginScreen(
                 val name = account.displayName ?: account.givenName ?: "Google Broadcaster"
                 val email = account.email ?: "user@gmail.com"
                 val photoUrl = account.photoUrl?.toString()
-                onLoginSuccess(name, email, "👑", photoUrl)
+                val idToken = account.idToken
+                if (onGoogleSignIn != null) {
+                    onGoogleSignIn(idToken, name, email, "👑", photoUrl)
+                } else {
+                    onLoginSuccess(name, email, "👑", photoUrl)
+                }
             } else {
                 showDirectGoogleModal = true
             }
         } catch (e: Exception) {
+            Log.w("ZYVO_LOGIN", "Google Sign-In activity result exception: ${e.message}")
             showDirectGoogleModal = true
         }
     }

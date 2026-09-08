@@ -12,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineScope
@@ -264,6 +265,40 @@ class AuthRepository(private val context: Context? = null) {
                 is AuthState.Authenticated -> Result.success(state.user)
                 is AuthState.Error -> Result.failure(Exception(state.message))
                 else -> Result.failure(Exception("Failed to initialize guest profile"))
+            }
+        } catch (e: Exception) {
+            val friendlyError = mapAuthException(e)
+            _authState.value = AuthState.Error(friendlyError)
+            Result.failure(Exception(friendlyError, e))
+        }
+    }
+
+    /**
+     * Sign In with Google ID Token using Firebase Authentication GoogleAuthProvider.
+     */
+    suspend fun signInWithGoogle(
+        idToken: String,
+        displayName: String? = null,
+        username: String? = null,
+        avatar: String = "👑"
+    ): Result<User> {
+        val auth = firebaseAuth ?: return Result.failure(Exception("Firebase Authentication is not available"))
+        _authState.value = AuthState.Loading
+
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val authResult = auth.signInWithCredential(credential).awaitResult()
+            val firebaseUser = authResult.user ?: throw Exception("Firebase user is null after Google sign-in")
+
+            when (val state = loadOrCreateFirestoreUserProfile(
+                firebaseUser = firebaseUser,
+                initialDisplayName = displayName ?: firebaseUser.displayName,
+                initialUsername = username ?: firebaseUser.email?.substringBefore("@"),
+                initialAvatar = avatar
+            )) {
+                is AuthState.Authenticated -> Result.success(state.user)
+                is AuthState.Error -> Result.failure(Exception(state.message))
+                else -> Result.failure(Exception("Failed to initialize Google user profile"))
             }
         } catch (e: Exception) {
             val friendlyError = mapAuthException(e)

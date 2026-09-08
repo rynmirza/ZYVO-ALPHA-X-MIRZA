@@ -212,17 +212,62 @@ class ZyvoRepository(
         }
     }
 
-    fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String, avatarUrl: String? = null) {
-        createCustomProfileAndLogin(
-            displayName = displayName,
-            username = email.substringBefore("@"),
-            email = email,
-            avatarEmoji = avatarEmoji,
-            avatarUrl = avatarUrl,
-            bio = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
-            gender = "Not Specified",
-            location = "Global HQ 🌍"
-        )
+    fun loginWithGoogle(
+        idToken: String? = null,
+        displayName: String,
+        email: String,
+        avatarEmoji: String,
+        avatarUrl: String? = null
+    ) {
+        val sanitizedUsername = email.substringBefore("@")
+            .replace(".", "_")
+            .lowercase()
+            .filter { it.isLetterOrDigit() || it == '_' }
+            .ifBlank { "broadcaster" }
+
+        scope.launch {
+            if (!idToken.isNullOrBlank()) {
+                val result = authRepository.signInWithGoogle(
+                    idToken = idToken,
+                    displayName = displayName.ifBlank { "ZYVO Broadcaster" },
+                    username = sanitizedUsername,
+                    avatar = if (!avatarUrl.isNullOrBlank()) avatarUrl else avatarEmoji.ifBlank { "👑" }
+                )
+                result.onSuccess { user ->
+                    val newProfile = user.toUserProfile(
+                        bio = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
+                        gender = "Not Specified",
+                        location = "Global HQ 🌍"
+                    )
+                    _currentUserProfile.value = newProfile
+                    _userProfiles.update { map -> map + (user.uid to newProfile) }
+                    _isLoggedIn.value = true
+                    saveSessionToPrefs()
+                }.onFailure {
+                    createCustomProfileAndLogin(
+                        displayName = displayName,
+                        username = sanitizedUsername,
+                        email = email,
+                        avatarEmoji = avatarEmoji,
+                        avatarUrl = avatarUrl,
+                        bio = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
+                        gender = "Not Specified",
+                        location = "Global HQ 🌍"
+                    )
+                }
+            } else {
+                createCustomProfileAndLogin(
+                    displayName = displayName,
+                    username = sanitizedUsername,
+                    email = email,
+                    avatarEmoji = avatarEmoji,
+                    avatarUrl = avatarUrl,
+                    bio = "Official ZYVO Broadcaster & Creator 🎙️ Live on ZYVO!",
+                    gender = "Not Specified",
+                    location = "Global HQ 🌍"
+                )
+            }
+        }
     }
 
     fun logout() {

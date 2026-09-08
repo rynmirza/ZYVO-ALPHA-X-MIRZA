@@ -1,43 +1,81 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User Profiles
-    // Anyone can read profiles; only the authenticated user can create or update their own profile document.
-    match /users/{userId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if request.auth != null && request.auth.uid == userId;
+
+    // Helper functions for authentication & authorization
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Live Rooms & WebRTC Signaling
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function roomExists(roomId) {
+      return exists(/databases/$(database)/documents/liveRooms/$(roomId));
+    }
+
+    function getRoomData(roomId) {
+      return get(/databases/$(database)/documents/liveRooms/$(roomId)).data;
+    }
+
+    function isHost(roomId) {
+      return isAuthenticated() && (
+        getRoomData(roomId).hostId == request.auth.uid ||
+        getRoomData(roomId).creatorIdentity == request.auth.uid
+      );
+    }
+
+    // User Profiles
+    // Authenticated users can read profiles; only the profile owner can create, update, or delete their own profile.
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    // Live Rooms
     match /liveRooms/{roomId} {
-      // Authenticated users and guests may browse live room metadata
-      allow read: if true;
+      // Authenticated users can read live room metadata
+      allow read: if isAuthenticated();
 
       // Only authenticated users can create a room with their own UID as host
-      allow create: if request.auth != null && (request.resource.data.hostId == request.auth.uid || request.resource.data.creatorIdentity == request.auth.uid);
+      allow create: if isAuthenticated() && (
+        request.resource.data.hostId == request.auth.uid ||
+        request.resource.data.creatorIdentity == request.auth.uid
+      );
 
       // Only the room host can update room status or delete the room
-      allow update: if request.auth != null && (resource.data.hostId == request.auth.uid || resource.data.creatorIdentity == request.auth.uid);
-      allow delete: if request.auth != null && (resource.data.hostId == request.auth.uid || resource.data.creatorIdentity == request.auth.uid);
+      allow update: if isAuthenticated() && (
+        resource.data.hostId == request.auth.uid ||
+        resource.data.creatorIdentity == request.auth.uid
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.hostId == request.auth.uid ||
+        resource.data.creatorIdentity == request.auth.uid
+      );
 
-      // WebRTC Signaling: SDP Offer and Answer subcollection
+      // WebRTC Signaling: SDP Offer and Answer
       match /signaling/{docId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        allow read: if isAuthenticated() && roomExists(roomId);
+        // SDP Offer: only writable by the room host
+        allow write: if docId == "offer" && isHost(roomId);
+        // SDP Answer: only writable by an authenticated participating viewer (non-host)
+        allow write: if docId == "answer" && isAuthenticated() && !isHost(roomId) && (
+          request.resource.data.senderUid == null || request.resource.data.senderUid == request.auth.uid
+        );
       }
 
-      // Host ICE Candidates subcollection
+      // Host ICE Candidates: only the host can publish host candidates
       match /hostCandidates/{candidateId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        allow read: if isAuthenticated() && roomExists(roomId);
+        allow write: if isHost(roomId);
       }
 
-      // Viewer ICE Candidates subcollection
+      // Viewer ICE Candidates: only participating viewers can publish viewer candidates
       match /viewerCandidates/{candidateId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null;
+        allow read: if isAuthenticated() && roomExists(roomId);
+        allow write: if isAuthenticated() && (!isHost(roomId) || request.resource.data.senderUid == request.auth.uid);
       }
     }
   }

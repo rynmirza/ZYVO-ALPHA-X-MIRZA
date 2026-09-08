@@ -545,8 +545,14 @@ class LiveStreamViewModel(
         _authErrorMessage.value = null
     }
 
-    fun loginWithGoogle(displayName: String, email: String, avatarEmoji: String, avatarUrl: String? = null) {
-        repository.loginWithGoogle(displayName, email, avatarEmoji, avatarUrl)
+    fun loginWithGoogle(
+        idToken: String? = null,
+        displayName: String,
+        email: String,
+        avatarEmoji: String,
+        avatarUrl: String? = null
+    ) {
+        repository.loginWithGoogle(idToken, displayName, email, avatarEmoji, avatarUrl)
     }
 
     fun createCustomProfileAndLogin(
