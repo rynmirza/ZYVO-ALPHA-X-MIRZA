@@ -53,7 +53,10 @@ class WebRtcClient(
     @Volatile
     private var activeFilter: BeautifyFilter = BeautifyFilter.ORIGINAL
 
-    private var beautyFilter: NinetiesVignetteBeautyFilter? = null
+    private var gpuProcessor: GpuVideoFrameProcessor? = null
+    private val isGpuProcessingBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+    @Volatile
+    private var isGpuFilterDisabled = false
 
     fun setActiveFilter(filter: BeautifyFilter) {
         activeFilter = filter
@@ -147,6 +150,9 @@ class WebRtcClient(
             val helper = SurfaceTextureHelper.create("WebRtcCaptureThread", egl.eglBaseContext)
             surfaceTextureHelper = helper
 
+            gpuProcessor = GpuVideoFrameProcessor(egl.eglBaseContext)
+            isGpuFilterDisabled = false
+
             val source = factory.createVideoSource(capturer.isScreencast)
             videoSource = source
 
@@ -160,17 +166,36 @@ class WebRtcClient(
                 }
 
                 override fun onFrameCaptured(frame: VideoFrame) {
-                    val processedFrame = if (activeFilter == BeautifyFilter.VIGNETTE_90S && frame.buffer is VideoFrame.TextureBuffer) {
-                        try {
-                            processVideoFrame(frame)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to apply 90s beauty filter, using original frame", e)
-                            frame
-                        }
-                    } else {
-                        frame
+                    if (activeFilter != BeautifyFilter.VIGNETTE_90S || isGpuFilterDisabled || frame.buffer !is VideoFrame.TextureBuffer) {
+                        source.capturerObserver.onFrameCaptured(frame)
+                        return
                     }
-                    source.capturerObserver.onFrameCaptured(processedFrame)
+
+                    val processor = gpuProcessor
+                    if (processor == null) {
+                        source.capturerObserver.onFrameCaptured(frame)
+                        return
+                    }
+
+                    if (!isGpuProcessingBusy.compareAndSet(false, true)) {
+                        // Previous frame still running on GPU thread, deliver raw frame smoothly
+                        source.capturerObserver.onFrameCaptured(frame)
+                        return
+                    }
+
+                    frame.retain()
+                    processor.processFrameAsync(frame) { outputFrame ->
+                        try {
+                            source.capturerObserver.onFrameCaptured(outputFrame)
+                        } catch (t: Throwable) {
+                            Log.e(TAG, "Error delivering filtered frame to WebRTC observer", t)
+                            isGpuFilterDisabled = true
+                            source.capturerObserver.onFrameCaptured(frame)
+                        } finally {
+                            frame.release()
+                            isGpuProcessingBusy.set(false)
+                        }
+                    }
                 }
             }
 
@@ -625,24 +650,11 @@ class WebRtcClient(
             Log.e(TAG, "Error disposing video track/source", e)
         }
 
-        beautyFilter?.let { filter ->
-            val handler = surfaceTextureHelper?.handler
-            if (handler != null) {
-                handler.post {
-                    try {
-                        filter.release()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error releasing beauty filter", e)
-                    }
-                }
-            } else {
-                try {
-                    filter.release()
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error releasing beauty filter without handler", e)
-                }
-            }
-            beautyFilter = null
+        try {
+            gpuProcessor?.release()
+            gpuProcessor = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing gpuProcessor", e)
         }
 
         try {
@@ -826,39 +838,5 @@ class WebRtcClient(
         override fun onRenegotiationNeeded() {
             Log.d(TAG, "WebRTC Renegotiation needed")
         }
-    }
-
-    private fun processVideoFrame(frame: VideoFrame): VideoFrame {
-        val textureBuffer = frame.buffer as VideoFrame.TextureBuffer
-        val width = textureBuffer.width
-        val height = textureBuffer.height
-
-        var filter = beautyFilter
-        if (filter == null) {
-            filter = NinetiesVignetteBeautyFilter()
-            beautyFilter = filter
-        }
-
-        val matrix = textureBuffer.transformMatrix
-        val transformFloatArray = RendererCommon.convertMatrixFromAndroidGraphicsMatrix(matrix)
-
-        val processedTextureId = filter.process(
-            inputTextureId = textureBuffer.textureId,
-            width = width,
-            height = height,
-            transformMatrix = transformFloatArray
-        )
-
-        val processedBuffer = TextureBufferImpl(
-            width, height,
-            VideoFrame.TextureBuffer.Type.RGB,
-            processedTextureId,
-            matrix,
-            surfaceTextureHelper?.handler ?: android.os.Handler(android.os.Looper.myLooper()!!),
-            YuvConverter(),
-            Runnable {}
-        )
-
-        return VideoFrame(processedBuffer, frame.rotation, frame.timestampNs)
     }
 }

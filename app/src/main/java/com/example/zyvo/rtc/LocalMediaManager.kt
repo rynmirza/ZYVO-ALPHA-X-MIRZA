@@ -80,13 +80,15 @@ class LocalMediaManager(private val context: Context) {
         FaceDetection.getClient(options)
     }
 
+    private val isDetectingFace = java.util.concurrent.atomic.AtomicBoolean(false)
+
     init {
         // Wire up camera callbacks
         cameraCapturer.onFrameCaptured = { frame ->
             try {
                 processFaceDetection(frame)
-            } catch (e: Exception) {
-                Log.w(tag, "Face detection error", e)
+            } catch (t: Throwable) {
+                Log.w(tag, "Face detection error", t)
             }
             onVideoFrameCaptured?.invoke(frame)
         }
@@ -274,70 +276,93 @@ class LocalMediaManager(private val context: Context) {
 
     @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
     private fun processFaceDetection(imageProxy: ImageProxy) {
-        val mediaImage = imageProxy.image ?: return
-        val rotation = imageProxy.imageInfo.rotationDegrees
-        val inputImage = InputImage.fromMediaImage(mediaImage, rotation)
+        if (!isDetectingFace.compareAndSet(false, true)) {
+            // Drop frame for ML analysis if previous inference is still processing
+            return
+        }
 
-        faceDetector.process(inputImage)
-            .addOnSuccessListener { faces ->
-                if (faces.isNotEmpty()) {
-                    val face = faces[0]
-                    val isRotated = rotation == 90 || rotation == 270
-                    val width = if (isRotated) imageProxy.height else imageProxy.width
-                    val height = if (isRotated) imageProxy.width else imageProxy.height
+        try {
+            val bitmap = imageProxy.toBitmap()
+            val rotation = imageProxy.imageInfo.rotationDegrees
+            val inputImage = InputImage.fromBitmap(bitmap, rotation)
+            val isRotated = rotation == 90 || rotation == 270
+            val imgWidth = if (isRotated) imageProxy.height.toFloat() else imageProxy.width.toFloat()
+            val imgHeight = if (isRotated) imageProxy.width.toFloat() else imageProxy.height.toFloat()
+            val width = imgWidth.coerceAtLeast(1f)
+            val height = imgHeight.coerceAtLeast(1f)
 
-                    val boundingBox = face.boundingBox
-                    FaceTrackerState.hasFace = true
-                    FaceTrackerState.faceBoundingBox.set(
-                        boundingBox.left.toFloat() / width,
-                        boundingBox.top.toFloat() / height,
-                        boundingBox.right.toFloat() / width,
-                        boundingBox.bottom.toFloat() / height
-                    )
+            faceDetector.process(inputImage)
+                .addOnSuccessListener { faces ->
+                    try {
+                        if (faces.isNotEmpty()) {
+                            val face = faces[0]
+                            val boundingBox = face.boundingBox
 
-                    FaceTrackerState.faceCenter.set(
-                        boundingBox.centerX().toFloat() / width,
-                        boundingBox.centerY().toFloat() / height
-                    )
+                            val leftEye = face.getLandmark(FaceLandmark.LEFT_EYE)
+                            val rightEye = face.getLandmark(FaceLandmark.RIGHT_EYE)
+                            val leftCheek = face.getLandmark(FaceLandmark.LEFT_CHEEK)
+                            val rightCheek = face.getLandmark(FaceLandmark.RIGHT_CHEEK)
+                            val mouthLeft = face.getLandmark(FaceLandmark.MOUTH_LEFT)
+                            val mouthRight = face.getLandmark(FaceLandmark.MOUTH_RIGHT)
+                            val mouthBottom = face.getLandmark(FaceLandmark.MOUTH_BOTTOM)
 
-                    val leftEye = face.getLandmark(FaceLandmark.LEFT_EYE)
-                    if (leftEye != null) {
-                        FaceTrackerState.leftEye.set(leftEye.position.x / width, leftEye.position.y / height)
+                            val mouthX = if (mouthLeft != null && mouthRight != null) {
+                                (mouthLeft.position.x + mouthRight.position.x) / 2f / width
+                            } else if (mouthBottom != null) {
+                                mouthBottom.position.x / width
+                            } else {
+                                boundingBox.centerX().toFloat() / width
+                            }
+
+                            val mouthY = if (mouthLeft != null && mouthRight != null) {
+                                (mouthLeft.position.y + mouthRight.position.y) / 2f / height
+                            } else if (mouthBottom != null) {
+                                (mouthBottom.position.y - 10f) / height
+                            } else {
+                                (boundingBox.centerY().toFloat() + boundingBox.height() * 0.25f) / height
+                            }
+
+                            FaceTrackerState.update(
+                                FaceData(
+                                    hasFace = true,
+                                    centerX = (boundingBox.centerX().toFloat() / width).coerceIn(0f, 1f),
+                                    centerY = (boundingBox.centerY().toFloat() / height).coerceIn(0f, 1f),
+                                    boundLeft = (boundingBox.left.toFloat() / width).coerceIn(0f, 1f),
+                                    boundTop = (boundingBox.top.toFloat() / height).coerceIn(0f, 1f),
+                                    boundRight = (boundingBox.right.toFloat() / width).coerceIn(0f, 1f),
+                                    boundBottom = (boundingBox.bottom.toFloat() / height).coerceIn(0f, 1f),
+                                    leftEyeX = (leftEye?.position?.x?.div(width) ?: 0.4f).coerceIn(0f, 1f),
+                                    leftEyeY = (leftEye?.position?.y?.div(height) ?: 0.4f).coerceIn(0f, 1f),
+                                    rightEyeX = (rightEye?.position?.x?.div(width) ?: 0.6f).coerceIn(0f, 1f),
+                                    rightEyeY = (rightEye?.position?.y?.div(height) ?: 0.4f).coerceIn(0f, 1f),
+                                    mouthCenterX = mouthX.coerceIn(0f, 1f),
+                                    mouthCenterY = mouthY.coerceIn(0f, 1f),
+                                    leftCheekX = (leftCheek?.position?.x?.div(width) ?: 0.35f).coerceIn(0f, 1f),
+                                    leftCheekY = (leftCheek?.position?.y?.div(height) ?: 0.55f).coerceIn(0f, 1f),
+                                    rightCheekX = (rightCheek?.position?.x?.div(width) ?: 0.65f).coerceIn(0f, 1f),
+                                    rightCheekY = (rightCheek?.position?.y?.div(height) ?: 0.55f).coerceIn(0f, 1f)
+                                )
+                            )
+                        } else {
+                            FaceTrackerState.reset()
+                        }
+                    } catch (t: Throwable) {
+                        Log.w(tag, "Error parsing face landmarks", t)
+                        FaceTrackerState.reset()
                     }
-
-                    val rightEye = face.getLandmark(FaceLandmark.RIGHT_EYE)
-                    if (rightEye != null) {
-                        FaceTrackerState.rightEye.set(rightEye.position.x / width, rightEye.position.y / height)
-                    }
-
-                    val leftCheek = face.getLandmark(FaceLandmark.LEFT_CHEEK)
-                    if (leftCheek != null) {
-                        FaceTrackerState.leftCheek.set(leftCheek.position.x / width, leftCheek.position.y / height)
-                    }
-
-                    val rightCheek = face.getLandmark(FaceLandmark.RIGHT_CHEEK)
-                    if (rightCheek != null) {
-                        FaceTrackerState.rightCheek.set(rightCheek.position.x / width, rightCheek.position.y / height)
-                    }
-
-                    val mouthLeft = face.getLandmark(FaceLandmark.MOUTH_LEFT)
-                    val mouthRight = face.getLandmark(FaceLandmark.MOUTH_RIGHT)
-                    val mouthBottom = face.getLandmark(FaceLandmark.MOUTH_BOTTOM)
-                    if (mouthLeft != null && mouthRight != null) {
-                        FaceTrackerState.mouthCenter.set(
-                            (mouthLeft.position.x + mouthRight.position.x) / 2f / width,
-                            (mouthLeft.position.y + mouthRight.position.y) / 2f / height
-                        )
-                    } else if (mouthBottom != null) {
-                        FaceTrackerState.mouthCenter.set(mouthBottom.position.x / width, (mouthBottom.position.y - 10f) / height)
-                    }
-                } else {
+                }
+                .addOnFailureListener { e ->
+                    Log.w(tag, "Face detection model failure", e)
                     FaceTrackerState.reset()
                 }
-            }
-            .addOnFailureListener {
-                FaceTrackerState.reset()
-            }
+                .addOnCompleteListener {
+                    isDetectingFace.set(false)
+                }
+        } catch (t: Throwable) {
+            Log.w(tag, "Failed to initiate face detection", t)
+            isDetectingFace.set(false)
+            FaceTrackerState.reset()
+        }
     }
 
     /**

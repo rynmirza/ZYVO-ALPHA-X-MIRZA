@@ -345,6 +345,29 @@ fun VideoFeedTile(
             )
         }
 
+        if (filter == BeautifyFilter.VIGNETTE_90S) {
+            // Warm vintage film tint
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x1F8B5E3C))
+            )
+            // Soft dark radial vignette around frame borders
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0x10000000),
+                                Color(0x88000000)
+                            )
+                        )
+                    )
+            )
+        }
+
         // Top-left badge (e.g. HOST, GUEST 1, RIVAL)
         if (badgeText != null) {
             Row(

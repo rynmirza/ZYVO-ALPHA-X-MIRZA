@@ -1,6 +1,5 @@
 package com.example.zyvo.rtc
 
-import android.graphics.PointF
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import android.util.Log
@@ -23,13 +22,15 @@ class NinetiesVignetteBeautyFilter {
     private var vertexShader = 0
     private var fragmentShader = 0
 
-    // Framebuffer for rendering
+    // Framebuffer for internal rendering (if standalone)
     private var fboWidth = 0
     private var fboHeight = 0
     private var fboId = 0
     private var outputTextureId = 0
 
-    // Uniform locations
+    // Cached Attribute and Uniform locations
+    private var positionHandle = -1
+    private var tcHandle = -1
     private var texMatrixLoc = -1
     private var widthLoc = -1
     private var heightLoc = -1
@@ -41,6 +42,7 @@ class NinetiesVignetteBeautyFilter {
     private var mouthCenterLoc = -1
     private var leftCheekLoc = -1
     private var rightCheekLoc = -1
+    private var texUniform = -1
 
     // Adjustable aesthetic thresholds
     private val smoothStrength = 0.35f      // Default 35% natural skin smoothing
@@ -98,7 +100,7 @@ class NinetiesVignetteBeautyFilter {
         
         void main() {
             vec3 color = texture2D(u_texture, var_tc).rgb;
-            float aspect = u_width / u_height;
+            float aspect = u_width / max(u_height, 1.0);
             
             // 1. SMART PARAMETRIC FACE MASK & BEAUTIFICATION
             float skinMask = 0.0;
@@ -124,8 +126,8 @@ class NinetiesVignetteBeautyFilter {
             
             // 2. SKIN SMOOTHING (GPU edge-preserving bilateral blur approximation)
             if (skinMask > 0.01) {
-                float dx = 1.0 / u_width;
-                float dy = 1.0 / u_height;
+                float dx = 1.0 / max(u_width, 1.0);
+                float dy = 1.0 / max(u_height, 1.0);
                 
                 vec3 blur = color * 0.36;
                 blur += texture2D(u_texture, var_tc + vec2(-dx, 0.0)).rgb * 0.16;
@@ -190,30 +192,51 @@ class NinetiesVignetteBeautyFilter {
     """.trimIndent()
 
     /**
-     * Compiles GLES shaders and programs on the GL thread.
+     * Compiles GLES shaders and program safely on the active GL thread.
+     * Returns true if successfully compiled and linked.
      */
-    fun compile() {
-        if (program != 0) return // Already compiled
+    fun compile(): Boolean {
+        if (program != 0) return true
 
         vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderSource)
-        fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderSource)
-
-        program = GLES20.glCreateProgram()
-        GLES20.glAttachShader(program, vertexShader)
-        GLES20.glAttachShader(program, fragmentShader)
-        GLES20.glLinkProgram(program)
-
-        val linkStatus = IntArray(1)
-        GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0)
-        if (linkStatus[0] == 0) {
-            val log = GLES20.glGetProgramInfoLog(program)
-            Log.e(tag, "Error linking program: $log")
-            GLES20.glDeleteProgram(program)
-            program = 0
-            return
+        if (vertexShader == 0) {
+            Log.e(tag, "Vertex shader compilation failed")
+            return false
         }
 
-        // Cache uniform positions
+        fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderSource)
+        if (fragmentShader == 0) {
+            Log.e(tag, "Fragment shader compilation failed")
+            GLES20.glDeleteShader(vertexShader)
+            vertexShader = 0
+            return false
+        }
+
+        val prog = GLES20.glCreateProgram()
+        if (prog == 0) {
+            Log.e(tag, "glCreateProgram failed")
+            return false
+        }
+
+        GLES20.glAttachShader(prog, vertexShader)
+        GLES20.glAttachShader(prog, fragmentShader)
+        GLES20.glLinkProgram(prog)
+
+        val linkStatus = IntArray(1)
+        GLES20.glGetProgramiv(prog, GLES20.GL_LINK_STATUS, linkStatus, 0)
+        if (linkStatus[0] == 0) {
+            val log = GLES20.glGetProgramInfoLog(prog)
+            Log.e(tag, "Error linking program: $log")
+            GLES20.glDeleteProgram(prog)
+            return false
+        }
+        program = prog
+
+        // Attributes
+        positionHandle = GLES20.glGetAttribLocation(program, "in_position")
+        tcHandle = GLES20.glGetAttribLocation(program, "in_tc")
+
+        // Uniform locations
         texMatrixLoc = GLES20.glGetUniformLocation(program, "tex_matrix")
         widthLoc = GLES20.glGetUniformLocation(program, "u_width")
         heightLoc = GLES20.glGetUniformLocation(program, "u_height")
@@ -225,16 +248,18 @@ class NinetiesVignetteBeautyFilter {
         mouthCenterLoc = GLES20.glGetUniformLocation(program, "u_mouth_center")
         leftCheekLoc = GLES20.glGetUniformLocation(program, "u_left_cheek")
         rightCheekLoc = GLES20.glGetUniformLocation(program, "u_right_cheek")
+        texUniform = GLES20.glGetUniformLocation(program, "u_texture")
 
-        Log.d(tag, "GL Program successfully linked with cached uniforms.")
+        Log.d(tag, "GL Program successfully linked with cached uniforms. program=$program")
+        return true
     }
 
     /**
      * Initializes FBO output texture
      */
-    private fun setupFBO(width: Int, height: Int) {
-        if (width == fboWidth && height == fboHeight && fboId != 0) {
-            return
+    private fun setupFBO(width: Int, height: Int): Boolean {
+        if (width == fboWidth && height == fboHeight && fboId != 0 && outputTextureId != 0) {
+            return true
         }
         releaseFBO()
 
@@ -244,6 +269,11 @@ class NinetiesVignetteBeautyFilter {
         val textures = IntArray(1)
         GLES20.glGenTextures(1, textures, 0)
         outputTextureId = textures[0]
+        if (outputTextureId == 0) {
+            Log.e(tag, "Failed to generate texture")
+            return false
+        }
+
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, outputTextureId)
         GLES20.glTexImage2D(
             GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA,
@@ -257,6 +287,12 @@ class NinetiesVignetteBeautyFilter {
         val fbos = IntArray(1)
         GLES20.glGenFramebuffers(1, fbos, 0)
         fboId = fbos[0]
+        if (fboId == 0) {
+            Log.e(tag, "Failed to generate FBO")
+            releaseFBO()
+            return false
+        }
+
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId)
         GLES20.glFramebufferTexture2D(
             GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
@@ -264,24 +300,33 @@ class NinetiesVignetteBeautyFilter {
         )
 
         val status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
             Log.e(tag, "Framebuffer incomplete status: $status")
+            releaseFBO()
+            return false
         }
 
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-        Log.d(tag, "FBO recreated: size=${fboWidth}x${fboHeight}")
+        Log.d(tag, "FBO created: size=${fboWidth}x${fboHeight}")
+        return true
     }
 
     /**
-     * Executes the shader pipeline on the input texture and outputs the final processed texture ID.
+     * Executes the shader pipeline directly into a specified target FBO.
+     * Ideal for pooled texture rendering.
      */
-    fun process(inputTextureId: Int, width: Int, height: Int, transformMatrix: FloatArray): Int {
-        compile()
-        if (program == 0) return inputTextureId
+    fun processToFbo(
+        inputTextureId: Int,
+        targetFboId: Int,
+        outputTextureId: Int,
+        width: Int,
+        height: Int,
+        transformMatrix: FloatArray
+    ): Int {
+        if (inputTextureId == 0 || width <= 0 || height <= 0) return 0
+        if (!compile()) return 0
 
-        setupFBO(width, height)
-
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, targetFboId)
         GLES20.glViewport(0, 0, width, height)
 
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -290,55 +335,62 @@ class NinetiesVignetteBeautyFilter {
         GLES20.glUseProgram(program)
 
         // Set dimensions
-        GLES20.glUniform1f(widthLoc, width.toFloat())
-        GLES20.glUniform1f(heightLoc, height.toFloat())
+        safeUniform1f(widthLoc, width.toFloat())
+        safeUniform1f(heightLoc, height.toFloat())
 
         // Pass transform matrix
-        GLES20.glUniformMatrix4fv(texMatrixLoc, 1, false, transformMatrix, 0)
+        safeUniformMatrix4fv(texMatrixLoc, 1, false, transformMatrix, 0)
 
-        // Pass face tracker landmarks from volatile FaceTrackerState
-        if (FaceTrackerState.hasFace) {
-            GLES20.glUniform1f(hasFaceLoc, 1.0f)
-            GLES20.glUniform2f(faceCenterLoc, FaceTrackerState.faceCenter.x, FaceTrackerState.faceCenter.y)
-            GLES20.glUniform4f(
-                faceBoundLoc,
-                FaceTrackerState.faceBoundingBox.left,
-                FaceTrackerState.faceBoundingBox.top,
-                FaceTrackerState.faceBoundingBox.right,
-                FaceTrackerState.faceBoundingBox.bottom
-            )
-            GLES20.glUniform2f(leftEyeLoc, FaceTrackerState.leftEye.x, FaceTrackerState.leftEye.y)
-            GLES20.glUniform2f(rightEyeLoc, FaceTrackerState.rightEye.x, FaceTrackerState.rightEye.y)
-            GLES20.glUniform2f(mouthCenterLoc, FaceTrackerState.mouthCenter.x, FaceTrackerState.mouthCenter.y)
-            GLES20.glUniform2f(leftCheekLoc, FaceTrackerState.leftCheek.x, FaceTrackerState.leftCheek.y)
-            GLES20.glUniform2f(rightCheekLoc, FaceTrackerState.rightCheek.x, FaceTrackerState.rightCheek.y)
+        // Pass thread-safe immutable face tracker landmarks
+        val face = FaceTrackerState.currentFace
+        if (face.hasFace) {
+            safeUniform1f(hasFaceLoc, 1.0f)
+            safeUniform2f(faceCenterLoc, face.centerX, face.centerY)
+            safeUniform4f(faceBoundLoc, face.boundLeft, face.boundTop, face.boundRight, face.boundBottom)
+            safeUniform2f(leftEyeLoc, face.leftEyeX, face.leftEyeY)
+            safeUniform2f(rightEyeLoc, face.rightEyeX, face.rightEyeY)
+            safeUniform2f(mouthCenterLoc, face.mouthCenterX, face.mouthCenterY)
+            safeUniform2f(leftCheekLoc, face.leftCheekX, face.leftCheekY)
+            safeUniform2f(rightCheekLoc, face.rightCheekX, face.rightCheekY)
         } else {
-            GLES20.glUniform1f(hasFaceLoc, 0.0f)
+            safeUniform1f(hasFaceLoc, 0.0f)
+            // Even when no face, set safe normalized coordinates
+            safeUniform2f(faceCenterLoc, 0.5f, 0.5f)
+            safeUniform4f(faceBoundLoc, 0.3f, 0.3f, 0.7f, 0.7f)
+            safeUniform2f(leftEyeLoc, 0.4f, 0.4f)
+            safeUniform2f(rightEyeLoc, 0.6f, 0.4f)
+            safeUniform2f(mouthCenterLoc, 0.5f, 0.7f)
+            safeUniform2f(leftCheekLoc, 0.35f, 0.55f)
+            safeUniform2f(rightCheekLoc, 0.65f, 0.55f)
         }
 
         // Draw quad geometry
-        val positionHandle = GLES20.glGetAttribLocation(program, "in_position")
-        GLES20.glEnableVertexAttribArray(positionHandle)
-        vertexBuffer.position(0)
-        GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 16, vertexBuffer)
+        if (positionHandle != -1) {
+            GLES20.glEnableVertexAttribArray(positionHandle)
+            vertexBuffer.position(0)
+            GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 16, vertexBuffer)
+        }
 
-        val tcHandle = GLES20.glGetAttribLocation(program, "in_tc")
-        GLES20.glEnableVertexAttribArray(tcHandle)
-        vertexBuffer.position(2)
-        GLES20.glVertexAttribPointer(tcHandle, 2, GLES20.GL_FLOAT, false, 16, vertexBuffer)
+        if (tcHandle != -1) {
+            GLES20.glEnableVertexAttribArray(tcHandle)
+            vertexBuffer.position(2)
+            GLES20.glVertexAttribPointer(tcHandle, 2, GLES20.GL_FLOAT, false, 16, vertexBuffer)
+        }
 
         // Bind input camera OES texture
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, inputTextureId)
-        val texUniform = GLES20.glGetUniformLocation(program, "u_texture")
-        GLES20.glUniform1i(texUniform, 0)
+        safeUniform1i(texUniform, 0)
 
         // Render full screen quad
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
 
+        // Flush rendering operations to complete GPU commands for downstream consumers
+        GLES20.glFlush()
+
         // Cleanup bindings
-        GLES20.glDisableVertexAttribArray(positionHandle)
-        GLES20.glDisableVertexAttribArray(tcHandle)
+        if (positionHandle != -1) GLES20.glDisableVertexAttribArray(positionHandle)
+        if (tcHandle != -1) GLES20.glDisableVertexAttribArray(tcHandle)
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0)
         GLES20.glUseProgram(0)
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
@@ -346,8 +398,41 @@ class NinetiesVignetteBeautyFilter {
         return outputTextureId
     }
 
+    /**
+     * Executes the shader pipeline on the input texture using internal FBO.
+     */
+    fun process(inputTextureId: Int, width: Int, height: Int, transformMatrix: FloatArray): Int {
+        if (!setupFBO(width, height)) return inputTextureId
+        val res = processToFbo(inputTextureId, fboId, outputTextureId, width, height, transformMatrix)
+        return if (res != 0) res else inputTextureId
+    }
+
+    private fun safeUniform1f(location: Int, value: Float) {
+        if (location != -1) GLES20.glUniform1f(location, value)
+    }
+
+    private fun safeUniform2f(location: Int, x: Float, y: Float) {
+        if (location != -1) GLES20.glUniform2f(location, x, y)
+    }
+
+    private fun safeUniform4f(location: Int, x: Float, y: Float, z: Float, w: Float) {
+        if (location != -1) GLES20.glUniform4f(location, x, y, z, w)
+    }
+
+    private fun safeUniform1i(location: Int, value: Int) {
+        if (location != -1) GLES20.glUniform1i(location, value)
+    }
+
+    private fun safeUniformMatrix4fv(location: Int, count: Int, transpose: Boolean, value: FloatArray, offset: Int) {
+        if (location != -1) GLES20.glUniformMatrix4fv(location, count, transpose, value, offset)
+    }
+
     private fun loadShader(type: Int, shaderCode: String): Int {
         val shader = GLES20.glCreateShader(type)
+        if (shader == 0) {
+            Log.e(tag, "glCreateShader failed for type $type")
+            return 0
+        }
         GLES20.glShaderSource(shader, shaderCode)
         GLES20.glCompileShader(shader)
 
