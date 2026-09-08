@@ -85,9 +85,7 @@ fun LiveRoomScreen(
     ) { permissions ->
         val camGranted = permissions[Manifest.permission.CAMERA] ?: (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
         val micGranted = permissions[Manifest.permission.RECORD_AUDIO] ?: (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
-        viewModel.updatePermissions(camGranted, micGranted)
         if (camGranted && micGranted && isHost) {
-            viewModel.startLocalMedia(lifecycleOwner)
             viewModel.startHostSession(room.id)
         }
         pendingPermissionCallback?.invoke()
@@ -98,11 +96,9 @@ fun LiveRoomScreen(
         if (isHost) {
             val camGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
             val micGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-            viewModel.updatePermissions(camGranted, micGranted)
             if (!camGranted || !micGranted) {
                 permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO))
             } else {
-                viewModel.startLocalMedia(lifecycleOwner)
                 viewModel.startHostSession(room.id)
             }
         } else {
@@ -115,7 +111,7 @@ fun LiveRoomScreen(
     }
 
     val safeToggleMic: () -> Unit = {
-        if (localMediaState.isMicMuted) {
+        if (isMicMuted) {
             val hasMic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
             if (hasMic) {
                 viewModel.toggleMic()
@@ -129,7 +125,7 @@ fun LiveRoomScreen(
     }
 
     val safeToggleVideo: () -> Unit = {
-        if (!localMediaState.isCameraEnabled) {
+        if (isVideoMuted) {
             val hasCam = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
             if (hasCam) {
                 viewModel.toggleVideo()
@@ -154,20 +150,13 @@ fun LiveRoomScreen(
     val isHandRaised = currentUserParticipant?.isRequestedToCall == true || currentUserParticipant?.isReqToPresent == true
 
     val activeVideoComposable: (@Composable () -> Unit)? = if (isHost) {
-        if (localMediaState.isCameraEnabled && localMediaState.permissionStatus == MediaPermissionStatus.ALL_GRANTED) {
+        if (!isVideoMuted && localVideoTrack != null) {
             {
-                if (localVideoTrack != null) {
-                    WebRtcVideoView(
-                        videoTrack = localVideoTrack,
-                        isMirror = isFrontCamera,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else if (localMediaManager != null) {
-                    CameraPreviewView(
-                        mediaManager = localMediaManager,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                WebRtcVideoView(
+                    videoTrack = localVideoTrack,
+                    isMirror = isFrontCamera,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         } else null
     } else {
@@ -225,9 +214,9 @@ fun LiveRoomScreen(
                                 avatarUrl = room.hostAvatarUrl,
                                 roomCoverUrl = room.roomCoverUrl,
                                 coverStyle = room.coverStyle,
-                                isSpeaking = if (isHost) localMediaState.isSpeaking else true,
-                                isMuted = if (isHost) localMediaState.isMicMuted else false,
-                                isVideoOff = if (isHost) !localMediaState.isCameraEnabled else false,
+                                isSpeaking = true,
+                                isMuted = if (isHost) isMicMuted else false,
+                                isVideoOff = if (isHost) isVideoMuted else false,
                                 filter = currentFilter,
                                 badgeText = "🔴 LIVE BROADCAST",
                                 badgeColor = LiveRed,
@@ -244,9 +233,9 @@ fun LiveRoomScreen(
                                 hostCoverUrl = room.roomCoverUrl,
                                 filter = currentFilter,
                                 hostPreview = activeVideoComposable,
-                                isHostSpeaking = if (isHost) localMediaState.isSpeaking else true,
-                                isHostMuted = if (isHost) localMediaState.isMicMuted else false,
-                                isHostVideoOff = if (isHost) !localMediaState.isCameraEnabled else false,
+                                isHostSpeaking = true,
+                                isHostMuted = if (isHost) isMicMuted else false,
+                                isHostVideoOff = if (isHost) isVideoMuted else false,
                                 onSeatClick = { seat ->
                                     if (!seat.occupied && !seat.locked) {
                                         viewModel.inviteParticipantToStage(viewModel.currentUserIdentity, seat.id)
@@ -305,7 +294,9 @@ fun LiveRoomScreen(
                     }
 
                     // Host Permissions Resolution Card (shown if permissions not granted)
-                    if (isHost && localMediaState.permissionStatus != MediaPermissionStatus.ALL_GRANTED && localMediaState.permissionStatus != MediaPermissionStatus.NOT_DETERMINED) {
+                    val hasCamPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                    val hasMicPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                    if (isHost && (!hasCamPerm || !hasMicPerm)) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -378,20 +369,20 @@ fun LiveRoomScreen(
                     }
 
                     // Media Error Toast/Pill (dismissible)
-                    if (localMediaState.mediaError != null) {
+                    if (webRtcError != null) {
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
                                 .padding(top = 12.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(PkRed.copy(alpha = 0.9f))
-                                .clickable { viewModel.clearMediaError() }
+                                .clickable { }
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = localMediaState.mediaError ?: "", color = Color.White, fontSize = 12.sp)
+                                Text(text = webRtcError ?: "", color = Color.White, fontSize = 12.sp)
                             }
                         }
                     }

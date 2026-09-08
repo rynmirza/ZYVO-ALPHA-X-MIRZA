@@ -140,7 +140,16 @@ class WebRtcClient(
             videoSource = source
 
             capturer.initialize(helper, context.applicationContext, source.capturerObserver)
-            capturer.startCapture(1280, 720, 30)
+            try {
+                capturer.startCapture(1280, 720, 30)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed 720p capture, attempting 640x480", e)
+                try {
+                    capturer.startCapture(640, 480, 30)
+                } catch (e2: Exception) {
+                    Log.e(TAG, "Failed 480p capture", e2)
+                }
+            }
 
             val track = factory.createVideoTrack(VIDEO_TRACK_ID, source)
             track.setEnabled(_isCameraEnabled.value)

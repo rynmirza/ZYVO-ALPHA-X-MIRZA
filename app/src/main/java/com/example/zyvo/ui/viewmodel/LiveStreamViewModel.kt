@@ -57,12 +57,20 @@ class LiveStreamViewModel(
     private val _localMediaState = MutableStateFlow(LocalMediaState())
     val localMediaState: StateFlow<LocalMediaState> = _localMediaState.asStateFlow()
 
-    val isMicMuted: StateFlow<Boolean> = _localMediaState.map { it.isMicMuted }
+    private val _isCameraEnabled = MutableStateFlow(true)
+    val isCameraEnabled: StateFlow<Boolean> = _isCameraEnabled.asStateFlow()
+
+    private val _isMicrophoneEnabled = MutableStateFlow(true)
+    val isMicrophoneEnabled: StateFlow<Boolean> = _isMicrophoneEnabled.asStateFlow()
+
+    private val _cameraFacing = MutableStateFlow(true) // true = front, false = back
+    val cameraFacing: StateFlow<Boolean> = _cameraFacing.asStateFlow()
+
+    val isMicMuted: StateFlow<Boolean> = _isMicrophoneEnabled.map { !it }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
-    val isVideoMuted: StateFlow<Boolean> = _localMediaState.map { !it.isCameraEnabled }
+    val isVideoMuted: StateFlow<Boolean> = _isCameraEnabled.map { !it }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
-    val isFrontCamera: StateFlow<Boolean> = _localMediaState.map { it.isFrontCamera }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val isFrontCamera: StateFlow<Boolean> = _cameraFacing
     val isSpeaking: StateFlow<Boolean> = _localMediaState.map { it.isSpeaking }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     val mediaReady: StateFlow<Boolean> = _localMediaState.map { it.isMediaReady }
@@ -103,15 +111,6 @@ class LiveStreamViewModel(
 
     private val _pendingCandidatesCount = MutableStateFlow(0)
     val pendingCandidatesCount: StateFlow<Int> = _pendingCandidatesCount.asStateFlow()
-
-    private val _isCameraEnabled = MutableStateFlow(true)
-    val isCameraEnabled: StateFlow<Boolean> = _isCameraEnabled.asStateFlow()
-
-    private val _isMicrophoneEnabled = MutableStateFlow(true)
-    val isMicrophoneEnabled: StateFlow<Boolean> = _isMicrophoneEnabled.asStateFlow()
-
-    private val _cameraFacing = MutableStateFlow(true) // true = front, false = back
-    val cameraFacing: StateFlow<Boolean> = _cameraFacing.asStateFlow()
 
     private val _webRtcError = MutableStateFlow<String?>(null)
     val webRtcError: StateFlow<String?> = _webRtcError.asStateFlow()
@@ -883,18 +882,15 @@ class LiveStreamViewModel(
     fun toggleMic() {
         val newEnabled = !_isMicrophoneEnabled.value
         _webRtcClient?.setMicrophoneEnabled(newEnabled)
-        _localMediaManager?.toggleMic(!newEnabled)
         repository.toggleMic()
     }
     fun toggleVideo() {
         val newEnabled = !_isCameraEnabled.value
         _webRtcClient?.setCameraEnabled(newEnabled)
-        _localMediaManager?.toggleCamera(newEnabled)
         repository.toggleVideo()
     }
     fun flipCamera() {
         _webRtcClient?.switchCamera()
-        _localMediaManager?.switchCamera()
         repository.flipCamera()
     }
     fun playSfx(sfx: String) = repository.playSfx(sfx)
