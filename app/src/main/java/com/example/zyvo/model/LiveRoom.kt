@@ -31,5 +31,6 @@ data class LiveRoom(
     val pkState: PkState = PkState(),
     val teamState: TeamState = TeamState(),
     val streamStats: StreamStats = StreamStats(),
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastHeartbeatAt: Long = createdAt
 )

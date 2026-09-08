@@ -284,18 +284,8 @@ fun HomeScreen(
         )
     }
 
-    val allSquareRooms = remember(topLiveHosts, rooms) {
-        val staticList = topLiveHosts.map { host ->
-            SquareRoomItem(
-                id = host.id,
-                name = host.name,
-                category = host.category,
-                viewerCount = host.viewerCount,
-                imageUrl = host.imageUrl,
-                gender = host.gender
-            )
-        }
-        val dynamicList = rooms.map { r ->
+    val allSquareRooms = remember(rooms) {
+        rooms.map { r ->
             SquareRoomItem(
                 id = r.id,
                 name = r.hostName,
@@ -306,7 +296,6 @@ fun HomeScreen(
                 liveRoomObj = r
             )
         }
-        (dynamicList + staticList).distinctBy { it.id }
     }
 
     Scaffold(
@@ -347,41 +336,54 @@ fun HomeScreen(
             }
 
             // 4. TOP LIVE SECTION
+            // 4. TOP LIVE SECTION (REAL-TIME FIRESTORE ACTIVE ROOMS)
             item {
                 SectionHeader(
                     icon = "🔥",
-                    title = "Top Live",
+                    title = "Live Now",
                     onViewAllClick = { showTopLiveExplorer = true }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Show reference items first or dynamic active rooms
-                    items(topLiveHosts) { hostItem ->
-                        TopLiveCard(
-                            item = hostItem,
-                            onClick = {
-                                val matchRoom = rooms.find { 
-                                    it.creatorIdentity == hostItem.id || 
-                                    it.hostName.equals(hostItem.name, ignoreCase = true) 
-                                } ?: rooms.firstOrNull()
-                                if (matchRoom != null) {
-                                    onRoomClick(matchRoom)
-                                } else {
-                                    onGoLiveClick()
-                                }
-                            }
-                        )
+                if (rooms.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(rooms, key = { r -> r.id }) { room ->
+                            DynamicRoomCard(
+                                room = room,
+                                onClick = { onRoomClick(room) }
+                            )
+                        }
                     }
-
-                    // Dynamically append any active user rooms
-                    items(rooms) { room ->
-                        DynamicRoomCard(
-                            room = room,
-                            onClick = { onRoomClick(room) }
-                        )
+                } else {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onGoLiveClick() },
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B162B)),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🔴", fontSize = 28.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("No One Is Live Right Now", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text("Tap here to start a live room and broadcast!", color = Color.Gray, fontSize = 12.sp)
+                            }
+                            Button(
+                                onClick = onGoLiveClick,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text("Go Live", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
@@ -407,49 +409,44 @@ fun HomeScreen(
                 }
             }
 
-            // 6. ALL LIVE ROOMS (1:1 SQUARE GRID)
-            item {
-                Spacer(modifier = Modifier.height(6.dp))
-                SectionHeader(
-                    icon = "🔥",
-                    title = "All Live Streams",
-                    onViewAllClick = { showTopLiveExplorer = true }
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
+            // 6. ALL LIVE ROOMS (1:1 SQUARE GRID - REAL ACTIVE FIRESTORE ROOMS)
+            if (rooms.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    SectionHeader(
+                        icon = "🔥",
+                        title = "All Live Streams",
+                        onViewAllClick = { showTopLiveExplorer = true }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
-            items(allSquareRooms.chunked(2), key = { pair -> pair.first().id }) { pair ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    pair.forEach { roomItem ->
-                        Box(modifier = Modifier.weight(1f)) {
-                            SquareRoomCard(
-                                item = roomItem,
-                                onClick = {
-                                    if (roomItem.liveRoomObj != null) {
-                                        onRoomClick(roomItem.liveRoomObj)
-                                    } else {
-                                        val match = rooms.find { 
-                                            it.creatorIdentity == roomItem.id || 
-                                            it.hostName.equals(roomItem.name, ignoreCase = true) 
-                                        } ?: rooms.firstOrNull()
-                                        if (match != null) {
-                                            onRoomClick(match)
+                items(allSquareRooms.chunked(2), key = { pair -> pair.first().id }) { pair ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        pair.forEach { roomItem ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                SquareRoomCard(
+                                    item = roomItem,
+                                    onClick = {
+                                        if (roomItem.liveRoomObj != null) {
+                                            onRoomClick(roomItem.liveRoomObj)
                                         } else {
-                                            onGoLiveClick()
+                                            val match = rooms.find { it.id == roomItem.id }
+                                            if (match != null) onRoomClick(match)
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
+                        }
+                        if (pair.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
-                    if (pair.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
-                Spacer(modifier = Modifier.height(12.dp))
             }
 
             // Bottom Spacing for Fixed Navigation Bar

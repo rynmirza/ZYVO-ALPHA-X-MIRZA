@@ -7,6 +7,8 @@ import com.example.zyvo.data.model.User
 import com.example.zyvo.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import com.example.zyvo.data.firebase.FirestoreSignalingRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -342,6 +344,21 @@ class ZyvoRepository(
 
     private val _currentRoom = MutableStateFlow<LiveRoom?>(null)
     val currentRoom: StateFlow<LiveRoom?> = _currentRoom.asStateFlow()
+
+    private var activeRoomsJob: Job? = null
+
+    fun startActiveRoomsObservation(signalingRepo: FirestoreSignalingRepository) {
+        activeRoomsJob?.cancel()
+        activeRoomsJob = scope.launch {
+            signalingRepo.observeActiveLiveRooms().collect { activeRooms ->
+                _rooms.value = activeRooms
+            }
+        }
+    }
+
+    fun setCurrentRoom(room: LiveRoom?) {
+        _currentRoom.value = room
+    }
 
     private val _chatMessages = MutableStateFlow<Map<String, List<ChatMessage>>>(emptyMap())
     val chatMessages: StateFlow<Map<String, List<ChatMessage>>> = _chatMessages.asStateFlow()
@@ -1089,10 +1106,11 @@ class ZyvoRepository(
         isPrivate: Boolean = false,
         password: String? = null
     ) {
+        val authUid = authRepository.currentUser.value?.uid ?: currentUserIdentity
         val newRoomId = "room_${UUID.randomUUID().toString().take(8)}"
         val initialSeats = if (roomType == RoomType.MULTI_GUEST || roomType == RoomType.AUDIO_STAGE) {
             listOf(
-                Seat(id = 1, occupied = true, assignedParticipant = currentUserIdentity, participantName = "$currentUserName (Host)", avatarEmoji = currentUserAvatar, role = "HOST"),
+                Seat(id = 1, occupied = true, assignedParticipant = authUid, participantName = "$currentUserName (Host)", avatarEmoji = currentUserAvatar, role = "HOST"),
                 Seat(id = 2, occupied = false, locked = false),
                 Seat(id = 3, occupied = false, locked = false),
                 Seat(id = 4, occupied = false, locked = false),
@@ -1105,7 +1123,8 @@ class ZyvoRepository(
         val newRoom = LiveRoom(
             id = newRoomId,
             title = title,
-            creatorIdentity = currentUserIdentity,
+            creatorIdentity = authUid,
+            hostId = authUid,
             hostName = currentUserName,
             hostAvatar = currentUserAvatar,
             hostAvatarUrl = currentProfile.avatarUrl,
@@ -1119,13 +1138,16 @@ class ZyvoRepository(
             password = password,
             viewerCount = 1,
             likesCount = 0,
+            isLive = true,
+            status = "LIVE",
+            createdAt = System.currentTimeMillis(),
             seats = initialSeats
         )
 
-        _rooms.update { listOf(newRoom) + it }
+        _rooms.update { listOf(newRoom) + (it.filterNot { r -> r.id == newRoomId }) }
         _currentRoom.value = newRoom
         _participants.value = mapOf(
-            newRoomId to listOf(Participant(currentUserIdentity, currentUserName, currentUserAvatar, ParticipantRole.HOST))
+            newRoomId to listOf(Participant(authUid, currentUserName, currentUserAvatar, ParticipantRole.HOST))
         )
         sendSystemMessage(newRoomId, "Broadcast Studio live stream initiated! 🔴")
     }

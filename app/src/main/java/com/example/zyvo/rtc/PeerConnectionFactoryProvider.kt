@@ -69,6 +69,44 @@ object PeerConnectionFactoryProvider {
         val adm = JavaAudioDeviceModule.builder(context.applicationContext)
             .setUseHardwareAcousticEchoCanceler(JavaAudioDeviceModule.isBuiltInAcousticEchoCancelerSupported())
             .setUseHardwareNoiseSuppressor(JavaAudioDeviceModule.isBuiltInNoiseSuppressorSupported())
+            .setAudioRecordErrorCallback(object : JavaAudioDeviceModule.AudioRecordErrorCallback {
+                override fun onWebRtcAudioRecordInitError(errorMessage: String?) {
+                    Log.e("ZYVO_AUDIO", "AUDIO_ERROR: WebRtcAudioRecordInitError - $errorMessage")
+                }
+                override fun onWebRtcAudioRecordStartError(errorCode: JavaAudioDeviceModule.AudioRecordStartErrorCode?, errorMessage: String?) {
+                    Log.e("ZYVO_AUDIO", "AUDIO_ERROR: WebRtcAudioRecordStartError [$errorCode] - $errorMessage")
+                }
+                override fun onWebRtcAudioRecordError(errorMessage: String?) {
+                    Log.e("ZYVO_AUDIO", "AUDIO_ERROR: WebRtcAudioRecordError - $errorMessage")
+                }
+            })
+            .setAudioTrackErrorCallback(object : JavaAudioDeviceModule.AudioTrackErrorCallback {
+                override fun onWebRtcAudioTrackInitError(errorMessage: String?) {
+                    Log.e("ZYVO_AUDIO", "AUDIO_ERROR: WebRtcAudioTrackInitError - $errorMessage")
+                }
+                override fun onWebRtcAudioTrackStartError(errorCode: JavaAudioDeviceModule.AudioTrackStartErrorCode?, errorMessage: String?) {
+                    Log.e("ZYVO_AUDIO", "AUDIO_ERROR: WebRtcAudioTrackStartError [$errorCode] - $errorMessage")
+                }
+                override fun onWebRtcAudioTrackError(errorMessage: String?) {
+                    Log.e("ZYVO_AUDIO", "AUDIO_ERROR: WebRtcAudioTrackError - $errorMessage")
+                }
+            })
+            .setAudioRecordStateCallback(object : JavaAudioDeviceModule.AudioRecordStateCallback {
+                override fun onWebRtcAudioRecordStart() {
+                    Log.d("ZYVO_AUDIO", "AUDIO_DEVICE_STARTED: WebRtcAudioRecord recording started")
+                }
+                override fun onWebRtcAudioRecordStop() {
+                    Log.d("ZYVO_AUDIO", "AUDIO_DEVICE_STOPPED: WebRtcAudioRecord recording stopped")
+                }
+            })
+            .setAudioTrackStateCallback(object : JavaAudioDeviceModule.AudioTrackStateCallback {
+                override fun onWebRtcAudioTrackStart() {
+                    Log.d("ZYVO_AUDIO", "AUDIO_DEVICE_STARTED: WebRtcAudioTrack playback started")
+                }
+                override fun onWebRtcAudioTrackStop() {
+                    Log.d("ZYVO_AUDIO", "AUDIO_DEVICE_STOPPED: WebRtcAudioTrack playback stopped")
+                }
+            })
             .createAudioDeviceModule()
         audioDeviceModule = adm
 

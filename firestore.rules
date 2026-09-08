@@ -45,10 +45,12 @@ service cloud.firestore {
         request.resource.data.creatorIdentity == request.auth.uid
       );
 
-      // Only the room host can update room status or delete the room
+      // Only the room host can update room status, metadata, or delete the room,
+      // but any authenticated user can modify the viewerCount field.
       allow update: if isAuthenticated() && (
         resource.data.hostId == request.auth.uid ||
-        resource.data.creatorIdentity == request.auth.uid
+        resource.data.creatorIdentity == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewerCount'])
       );
       allow delete: if isAuthenticated() && (
         resource.data.hostId == request.auth.uid ||
@@ -76,6 +78,12 @@ service cloud.firestore {
       match /viewerCandidates/{candidateId} {
         allow read: if isAuthenticated() && roomExists(roomId);
         allow write: if isAuthenticated() && (!isHost(roomId) || request.resource.data.senderUid == request.auth.uid);
+      }
+
+      // Participants presence: any authenticated user can track their own presence, host can also cleanup
+      match /participants/{userId} {
+        allow read: if isAuthenticated();
+        allow write, update, delete: if isAuthenticated() && (userId == request.auth.uid || isHost(roomId));
       }
     }
   }

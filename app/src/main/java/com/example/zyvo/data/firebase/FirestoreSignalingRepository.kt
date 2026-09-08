@@ -7,6 +7,7 @@ import com.example.zyvo.model.LiveRoom
 import com.example.zyvo.model.RoomType
 import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.Dispatchers
@@ -75,11 +76,12 @@ class FirestoreSignalingRepository(
                 "roomType" to room.roomType.name,
                 "category" to room.category,
                 "tags" to room.tags,
-                "viewerCount" to 1,
+                "viewerCount" to 0,
                 "likesCount" to room.likesCount,
                 "isLive" to true,
                 "status" to STATUS_LIVE,
-                "createdAt" to System.currentTimeMillis()
+                "createdAt" to System.currentTimeMillis(),
+                "lastHeartbeatAt" to System.currentTimeMillis()
             )
 
             fs.collection("liveRooms")
@@ -96,6 +98,22 @@ class FirestoreSignalingRepository(
     }
 
     /**
+     * Sends periodic heartbeat for an active live room.
+     */
+    suspend fun sendRoomHeartbeat(roomId: String): Boolean = withContext(Dispatchers.IO) {
+        val fs = firestore ?: return@withContext false
+        try {
+            fs.collection("liveRooms").document(roomId)
+                .update("lastHeartbeatAt", System.currentTimeMillis())
+                .awaitResult()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG_ROOM, "Failed to send room heartbeat: ${e.message}")
+            false
+        }
+    }
+
+    /**
      * Updates the status of a live room (e.g. LIVE -> ENDED).
      */
     suspend fun updateRoomStatus(roomId: String, status: String): Boolean = withContext(Dispatchers.IO) {
@@ -107,7 +125,8 @@ class FirestoreSignalingRepository(
                 .update(
                     mapOf(
                         "status" to status,
-                        "isLive" to isLive
+                        "isLive" to isLive,
+                        "endedAt" to if (!isLive) System.currentTimeMillis() else null
                     )
                 )
                 .awaitResult()
@@ -134,6 +153,159 @@ class FirestoreSignalingRepository(
         } catch (e: Exception) {
             Log.e(TAG_ROOM, "Failed to update viewer count: ${e.message}", e)
             false
+        }
+    }
+
+    suspend fun incrementViewerCount(roomId: String): Boolean = withContext(Dispatchers.IO) {
+        val fs = firestore ?: return@withContext false
+        try {
+            fs.collection("liveRooms")
+                .document(roomId)
+                .update("viewerCount", FieldValue.increment(1))
+                .awaitResult()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG_ROOM, "Failed to increment viewer count: ${e.message}", e)
+            false
+        }
+    }
+
+    suspend fun decrementViewerCount(roomId: String): Boolean = withContext(Dispatchers.IO) {
+        val fs = firestore ?: return@withContext false
+        try {
+            fs.collection("liveRooms")
+                .document(roomId)
+                .update("viewerCount", FieldValue.increment(-1))
+                .awaitResult()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG_ROOM, "Failed to decrement viewer count: ${e.message}", e)
+            false
+        }
+    }
+
+    suspend fun addParticipant(roomId: String, uid: String, name: String, avatar: String): Boolean = withContext(Dispatchers.IO) {
+        val fs = firestore ?: return@withContext false
+        try {
+            val partData = hashMapOf(
+                "uid" to uid,
+                "name" to name,
+                "avatar" to avatar,
+                "joinedAt" to System.currentTimeMillis(),
+                "role" to "VIEWER",
+                "isActive" to true
+            )
+            fs.collection("liveRooms").document(roomId)
+                .collection("participants").document(uid)
+                .set(partData, SetOptions.merge())
+                .awaitResult()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG_ROOM, "Failed to add participant $uid: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun removeParticipant(roomId: String, uid: String): Boolean = withContext(Dispatchers.IO) {
+        val fs = firestore ?: return@withContext false
+        try {
+            fs.collection("liveRooms").document(roomId)
+                .collection("participants").document(uid)
+                .update("isActive", false)
+                .awaitResult()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG_ROOM, "Failed to remove participant $uid: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Observes real-time active live rooms from Firestore where status == LIVE.
+     */
+    fun observeActiveLiveRooms(): Flow<List<LiveRoom>> = callbackFlow {
+        val fs = firestore
+        if (fs == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+
+        val colRef = fs.collection("liveRooms")
+            .whereEqualTo("status", STATUS_LIVE)
+
+        val registration = colRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e(TAG_ROOM, "Error observing active live rooms: ${error.message}", error)
+                trySend(emptyList())
+                return@addSnapshotListener
+            }
+            if (snapshot != null) {
+                val now = System.currentTimeMillis()
+                val roomsList = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        val id = doc.getString("id") ?: doc.id
+                        val title = doc.getString("title") ?: "Live Stream"
+                        val description = doc.getString("description") ?: ""
+                        val hostId = doc.getString("hostId") ?: doc.getString("creatorIdentity") ?: ""
+                        val hostName = doc.getString("hostName") ?: "Broadcaster"
+                        val hostAvatar = doc.getString("hostAvatar") ?: "🎙️"
+                        val hostAvatarUrl = doc.getString("hostAvatarUrl")
+                        val hostGender = doc.getString("hostGender") ?: "Female"
+                        val roomCoverUrl = doc.getString("roomCoverUrl")
+                        val coverStyle = doc.getString("coverStyle") ?: "FULL_BACKDROP"
+                        val roomTypeStr = doc.getString("roomType") ?: "SINGLE_LIVE"
+                        val roomType = try { RoomType.valueOf(roomTypeStr) } catch (_: Exception) { RoomType.SINGLE_LIVE }
+                        val category = doc.getString("category") ?: "Entertainment"
+                        val viewerCount = doc.getLong("viewerCount")?.toInt() ?: 1
+                        val likesCount = doc.getLong("likesCount")?.toInt() ?: 0
+                        val isLive = doc.getBoolean("isLive") ?: true
+                        val status = doc.getString("status") ?: STATUS_LIVE
+                        val createdAt = doc.getLong("createdAt") ?: now
+                        val lastHeartbeatAt = doc.getLong("lastHeartbeatAt") ?: createdAt
+
+                        if (status != STATUS_LIVE || !isLive) return@mapNotNull null
+                        if (now - lastHeartbeatAt > 5 * 60 * 1000L) {
+                            Log.w(TAG_ROOM, "Skipping stale live room $id (lastHeartbeat=${now - lastHeartbeatAt}ms ago)")
+                            return@mapNotNull null
+                        }
+
+                        LiveRoom(
+                            id = id,
+                            title = title,
+                            description = description,
+                            creatorIdentity = hostId,
+                            hostId = hostId,
+                            hostName = hostName,
+                            hostAvatar = hostAvatar,
+                            hostAvatarUrl = hostAvatarUrl,
+                            hostGender = hostGender,
+                            roomCoverUrl = roomCoverUrl,
+                            coverStyle = coverStyle,
+                            roomType = roomType,
+                            category = category,
+                            viewerCount = viewerCount.coerceAtLeast(1),
+                            likesCount = likesCount,
+                            isLive = isLive,
+                            status = status,
+                            createdAt = createdAt,
+                            lastHeartbeatAt = lastHeartbeatAt
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG_ROOM, "Error parsing active live room doc ${doc.id}: ${e.message}")
+                        null
+                    }
+                }.sortedByDescending { it.createdAt }
+
+                trySend(roomsList)
+            } else {
+                trySend(emptyList())
+            }
+        }
+
+        awaitClose {
+            Log.d(TAG_ROOM, "active live rooms listener removed")
+            registration.remove()
         }
     }
 
@@ -173,6 +345,7 @@ class FirestoreSignalingRepository(
                     val isLive = snapshot.getBoolean("isLive") ?: true
                     val status = snapshot.getString("status") ?: if (isLive) STATUS_LIVE else STATUS_ENDED
                     val createdAt = snapshot.getLong("createdAt") ?: System.currentTimeMillis()
+                    val lastHeartbeatAt = snapshot.getLong("lastHeartbeatAt") ?: createdAt
 
                     val room = LiveRoom(
                         id = id,
@@ -192,7 +365,8 @@ class FirestoreSignalingRepository(
                         likesCount = likesCount,
                         isLive = isLive,
                         status = status,
-                        createdAt = createdAt
+                        createdAt = createdAt,
+                        lastHeartbeatAt = lastHeartbeatAt
                     )
                     trySend(room)
                 } catch (e: Exception) {

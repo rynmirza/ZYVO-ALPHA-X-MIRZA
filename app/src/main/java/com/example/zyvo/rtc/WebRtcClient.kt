@@ -189,24 +189,29 @@ class WebRtcClient(
 
             val source = factory.createAudioSource(audioConstraints)
             audioSource = source
+            Log.d("ZYVO_AUDIO", "AUDIO_SOURCE_CREATED: WebRTC AudioSource created")
 
             val track = factory.createAudioTrack(AUDIO_TRACK_ID, source)
             track.setEnabled(_isMicrophoneEnabled.value)
             _localAudioTrack = track
+            Log.d("ZYVO_AUDIO", "AUDIO_TRACK_CREATED: WebRTC AudioTrack created (id=$AUDIO_TRACK_ID, enabled=${_isMicrophoneEnabled.value})")
 
             peerConnection?.let { pc ->
                 try {
-                    pc.addTrack(track, listOf(STREAM_ID))
-                    Log.d(TAG, "Attached local AudioTrack to existing PeerConnection")
+                    val alreadyAdded = pc.senders.any { it.track()?.id() == AUDIO_TRACK_ID }
+                    if (!alreadyAdded) {
+                        val sender = pc.addTrack(track, listOf(STREAM_ID))
+                        Log.d("ZYVO_AUDIO", "AUDIO_TRACK_ATTACHED / AUDIO_SENDER_CREATED: Attached AudioTrack to PeerConnection (senderId=${sender?.id()})")
+                    }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error attaching AudioTrack to PeerConnection: ${e.message}")
+                    Log.e("ZYVO_AUDIO", "AUDIO_ERROR: Error attaching AudioTrack to PeerConnection: ${e.message}")
                 }
             }
 
-            Log.d(TAG, "Local AudioTrack created successfully")
+            Log.d("ZYVO_AUDIO", "Local AudioTrack created successfully")
             return track
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting local audio capture", e)
+            Log.e("ZYVO_AUDIO", "AUDIO_ERROR: Exception in startLocalAudio", e)
             _error.value = "Failed to start microphone: ${e.localizedMessage}"
             return null
         }
@@ -236,14 +241,28 @@ class WebRtcClient(
 
             // Attach local audio track if ready
             _localAudioTrack?.let { audioTrack ->
-                pc.addTrack(audioTrack, listOf(STREAM_ID))
-                Log.d(TAG, "Attached local AudioTrack to PeerConnection")
+                try {
+                    val alreadyAdded = pc.senders.any { it.track()?.id() == AUDIO_TRACK_ID }
+                    if (!alreadyAdded) {
+                        val sender = pc.addTrack(audioTrack, listOf(STREAM_ID))
+                        Log.d("ZYVO_AUDIO", "AUDIO_TRACK_ATTACHED / AUDIO_SENDER_CREATED: Attached local AudioTrack to PeerConnection (senderId=${sender?.id()})")
+                    }
+                } catch (e: Exception) {
+                    Log.e("ZYVO_AUDIO", "AUDIO_ERROR: Error attaching AudioTrack on PC creation", e)
+                }
             }
 
             // Attach local video track if ready
             _localVideoTrack?.let { videoTrack ->
-                pc.addTrack(videoTrack, listOf(STREAM_ID))
-                Log.d(TAG, "Attached local VideoTrack to PeerConnection")
+                try {
+                    val alreadyAdded = pc.senders.any { it.track()?.id() == VIDEO_TRACK_ID }
+                    if (!alreadyAdded) {
+                        val sender = pc.addTrack(videoTrack, listOf(STREAM_ID))
+                        Log.d(TAG, "Attached local VideoTrack to PeerConnection (senderId=${sender?.id()})")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error attaching VideoTrack on PC creation: ${e.message}")
+                }
             }
 
             Log.d(TAG, "PeerConnection successfully created and configured")
@@ -498,8 +517,21 @@ class WebRtcClient(
     fun setMicrophoneEnabled(enabled: Boolean) {
         _isMicrophoneEnabled.value = enabled
         _localAudioTrack?.setEnabled(enabled)
-        Log.d(TAG, "Microphone enabled set to: $enabled")
+        if (enabled) {
+            Log.d("ZYVO_AUDIO", "AUDIO_UNMUTED: Microphone track enabled")
+        } else {
+            Log.d("ZYVO_AUDIO", "AUDIO_MUTED: Microphone track disabled")
+        }
     }
+
+    val isAudioSenderPresent: Boolean
+        get() = peerConnection?.senders?.any { it.track()?.kind() == "audio" || it.track()?.id() == AUDIO_TRACK_ID } == true
+
+    val isAudioTransceiverPresent: Boolean
+        get() = peerConnection?.transceivers?.any { it.mediaType == MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO } == true
+
+    val isRemoteAudioReceiverPresent: Boolean
+        get() = peerConnection?.receivers?.any { it.track()?.kind() == "audio" } == true
 
     /**
      * Closes the active PeerConnection session and resets remote tracks.
@@ -642,10 +674,11 @@ class WebRtcClient(
                 _remoteVideoTrack.value = track
             }
             is AudioTrack -> {
-                Log.d("ZYVO_RTC", "remote audio track received: ${track.id()}")
+                Log.d("ZYVO_AUDIO", "REMOTE_AUDIO_TRACK_RECEIVED: Received remote AudioTrack (id=${track.id()})")
                 _remoteAudioTrack.value = track
                 track.setEnabled(true)
             }
+            null -> {}
         }
     }
 

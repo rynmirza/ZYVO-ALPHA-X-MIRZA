@@ -11,6 +11,7 @@ import com.example.zyvo.data.model.IceCandidateModel
 import com.example.zyvo.data.model.SessionDescriptionModel
 import com.example.zyvo.data.model.User
 import com.example.zyvo.model.*
+import com.example.zyvo.rtc.AudioRouteManager
 import com.example.zyvo.rtc.LocalMediaManager
 import com.example.zyvo.rtc.LocalMediaState
 import com.example.zyvo.rtc.MediaPermissionStatus
@@ -21,6 +22,8 @@ import org.webrtc.IceCandidate
 import org.webrtc.SessionDescription
 import org.webrtc.VideoTrack
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -117,15 +120,30 @@ class LiveStreamViewModel(
 
     private var hostSignalingJob: Job? = null
     private var viewerSignalingJob: Job? = null
+    private var heartbeatJob: Job? = null
 
     private val _signalingStatus = MutableStateFlow("IDLE")
     val signalingStatus: StateFlow<String> = _signalingStatus.asStateFlow()
 
     private var appContext: android.content.Context? = null
+    private var audioRouteManager: AudioRouteManager? = null
+
+    val localAudioTrack: AudioTrack?
+        get() = _webRtcClient?.localAudioTrack
+
+    val isAudioSenderPresent: Boolean
+        get() = _webRtcClient?.isAudioSenderPresent ?: false
+
+    val isAudioTransceiverPresent: Boolean
+        get() = _webRtcClient?.isAudioTransceiverPresent ?: false
+
+    val isRemoteAudioReceiverPresent: Boolean
+        get() = _webRtcClient?.isRemoteAudioReceiverPresent ?: false
 
     fun initPersistence(context: android.content.Context) {
         appContext = context.applicationContext
         repository.initPersistence(context)
+        repository.startActiveRoomsObservation(signalingRepository)
         initMedia(context)
         initWebRtc(context)
     }
@@ -145,6 +163,9 @@ class LiveStreamViewModel(
 
     fun initWebRtc(context: android.content.Context) {
         appContext = context.applicationContext
+        if (audioRouteManager == null) {
+            audioRouteManager = AudioRouteManager(context.applicationContext)
+        }
         if (_webRtcClient == null) {
             val client = WebRtcClient(context.applicationContext)
             _webRtcClient = client
@@ -247,6 +268,7 @@ class LiveStreamViewModel(
     }
 
     fun cleanupWebRtc() {
+        audioRouteManager?.stopLiveAudioSession()
         _webRtcClient?.dispose()
         _webRtcClient = null
         _localVideoTrack.value = null
@@ -261,8 +283,10 @@ class LiveStreamViewModel(
     }
 
     fun startHostSession(roomId: String) {
+        audioRouteManager?.startLiveAudioSession()
         hostSignalingJob?.cancel()
         viewerSignalingJob?.cancel()
+        heartbeatJob?.cancel()
         _signalingStatus.value = "HOST_CONNECTING"
         hostSignalingJob = viewModelScope.launch {
             val client = getOrCreateWebRtcClient() ?: run {
@@ -274,6 +298,14 @@ class LiveStreamViewModel(
             val hostUid = currentUser?.uid ?: currentUserIdentity
 
             Log.d("ZYVO_ROOM", "room created / host session starting: $roomId")
+
+            // 0. Start host room heartbeat
+            heartbeatJob = launch {
+                while (isActive) {
+                    signalingRepository.sendRoomHeartbeat(roomId)
+                    delay(30_000L)
+                }
+            }
 
             // 1. Start local camera & audio tracks
             val vTrack = client.startLocalVideo(preferFront = _cameraFacing.value)
@@ -345,8 +377,10 @@ class LiveStreamViewModel(
     }
 
     fun startViewerSession(roomId: String) {
+        audioRouteManager?.startLiveAudioSession()
         hostSignalingJob?.cancel()
         viewerSignalingJob?.cancel()
+        heartbeatJob?.cancel()
         _signalingStatus.value = "VIEWER_CONNECTING"
         viewerSignalingJob = viewModelScope.launch {
             val client = getOrCreateWebRtcClient() ?: run {
@@ -358,6 +392,13 @@ class LiveStreamViewModel(
             val viewerUid = currentUser?.uid ?: currentUserIdentity
 
             Log.d("ZYVO_ROOM", "room joined: $roomId (viewer: $viewerUid)")
+
+            // Track viewer presence & count in Firestore
+            launch {
+                val profile = currentUserProfile.value
+                signalingRepository.addParticipant(roomId, viewerUid, profile.displayName, profile.avatarEmoji)
+                signalingRepository.incrementViewerCount(roomId)
+            }
 
             // 1. Create PeerConnection
             val pc = client.createPeerConnection()
@@ -437,6 +478,8 @@ class LiveStreamViewModel(
         hostSignalingJob = null
         viewerSignalingJob?.cancel()
         viewerSignalingJob = null
+        heartbeatJob?.cancel()
+        heartbeatJob = null
         _signalingStatus.value = "IDLE"
 
         if (roomId != null) {
@@ -444,6 +487,10 @@ class LiveStreamViewModel(
                 if (isHost) {
                     signalingRepository.updateRoomStatus(roomId, FirestoreSignalingRepository.STATUS_ENDED)
                     signalingRepository.clearSignaling(roomId)
+                } else {
+                    val viewerUid = authCurrentUser.value?.uid ?: currentUserIdentity
+                    signalingRepository.removeParticipant(roomId, viewerUid)
+                    signalingRepository.decrementViewerCount(roomId)
                 }
             }
         }
@@ -777,8 +824,27 @@ class LiveStreamViewModel(
     }
 
     // Room Actions
+    private var isCreatingRoom = false
+
     fun joinRoom(roomId: String) {
-        repository.joinRoom(roomId)
+        viewModelScope.launch {
+            _signalingStatus.value = "VIEWER_CONNECTING"
+            // Fetch/validate room from Firestore before starting session
+            signalingRepository.observeRoom(roomId).firstOrNull()?.let { roomObj ->
+                val now = System.currentTimeMillis()
+                val isStale = (now - (roomObj.lastHeartbeatAt ?: roomObj.createdAt ?: now) > 5 * 60 * 1000L)
+                if (roomObj.isLive && roomObj.status == FirestoreSignalingRepository.STATUS_LIVE && !isStale && !roomObj.hostId.isNullOrEmpty()) {
+                    repository.setCurrentRoom(roomObj)
+                    repository.joinRoom(roomId)
+                } else {
+                    Log.w("ZYVO_ROOM", "Join validation failed: room $roomId is ended or stale")
+                    _signalingStatus.value = "ROOM_ENDED"
+                }
+            } ?: run {
+                Log.w("ZYVO_ROOM", "Join validation failed: room $roomId not found")
+                _signalingStatus.value = "ROOM_ENDED"
+            }
+        }
     }
 
     fun leaveRoom() {
@@ -800,13 +866,24 @@ class LiveStreamViewModel(
         isPrivate: Boolean = false,
         password: String? = null
     ) {
+        if (isCreatingRoom) {
+            Log.w("ZYVO_ROOM", "Duplicate createRoom call ignored")
+            return
+        }
+        isCreatingRoom = true
         repository.createRoom(title, roomType, category, tags, isPrivate, password)
         val room = repository.currentRoom.value
         val hostUid = authCurrentUser.value?.uid ?: currentUserIdentity
         if (room != null) {
             viewModelScope.launch {
-                signalingRepository.createLiveRoom(room, hostUid)
+                try {
+                    signalingRepository.createLiveRoom(room, hostUid)
+                } finally {
+                    isCreatingRoom = false
+                }
             }
+        } else {
+            isCreatingRoom = false
         }
         _showCreateRoomSheet.value = false
     }
